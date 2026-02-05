@@ -3,241 +3,250 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>PSY-WRITER v0.2 — Constructeur clinique</title>
+  <title>PSY-WRITER — Notes, rapports, emails, sevrage (offline)</title>
   <style>
+    /* ==========
+       Style: sobre, lisible, sans "effets bouton"
+       ========== */
     :root{
-      --bg:#0f1115; --fg:#e9edf5; --muted:#a8b0bd;
-      --glass: rgba(255,255,255,0.06);
-      --glass2: rgba(255,255,255,0.10);
-      --line: rgba(255,255,255,0.12);
-      --shadow: 0 18px 60px rgba(0,0,0,0.55);
-      --r: 18px;
-      --ok: rgba(46,229,157,0.55);
+      --bg: #0f1115;
+      --panel: rgba(255,255,255,0.06);
+      --panel2: rgba(255,255,255,0.09);
+      --line: rgba(255,255,255,0.14);
+      --fg: #e9edf5;
+      --muted: #a8b0bd;
+      --accent: rgba(46,229,157,0.55);
       --warn: rgba(255,207,90,0.55);
       --bad: rgba(255,107,107,0.55);
+      --shadow: 0 18px 60px rgba(0,0,0,0.45);
+      --r: 16px;
+
+      /* Police "élégante" : on prend les meilleures system fonts dispo */
+      --font: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
-    @media (prefers-color-scheme: light){
-      :root{ --bg:#f7f8fb; --fg:#0d1321; --muted:#4b5563; --glass: rgba(0,0,0,0.04); --glass2: rgba(0,0,0,0.06); --line: rgba(0,0,0,0.10); --shadow: 0 18px 60px rgba(0,0,0,0.12); }
+
+    /* Light mode */
+    [data-theme="light"]{
+      --bg: #f7f8fb;
+      --panel: rgba(0,0,0,0.04);
+      --panel2: rgba(0,0,0,0.06);
+      --line: rgba(0,0,0,0.10);
+      --fg: #0d1321;
+      --muted: #4b5563;
+      --shadow: 0 18px 60px rgba(0,0,0,0.10);
     }
+
     *{ box-sizing:border-box; }
     body{
-      margin:0; font-family:var(--sans); color:var(--fg);
-      background: radial-gradient(1200px 700px at 15% 0%, rgba(46,229,157,0.10), transparent 55%),
-                  radial-gradient(900px 600px at 95% 10%, rgba(255,207,90,0.10), transparent 55%),
-                  var(--bg);
+      margin:0; font-family: var(--font); color: var(--fg);
+      background: var(--bg);
     }
+
+    /* Top bar fixe */
     header{
-      position:sticky; top:0; z-index:10;
-      backdrop-filter: blur(12px);
-      border-bottom:1px solid var(--line);
-      background: rgba(0,0,0,0.18);
+      position: sticky; top:0; z-index:10;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
     }
-    @media (prefers-color-scheme: light){
-      header{ background: rgba(255,255,255,0.72); }
-    }
-    .wrap{ max-width:1200px; margin:0 auto; padding:12px 12px 22px; }
-    .top{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px 14px;
+      max-width: 1400px;
+      margin:0 auto;
     }
     .brand{ display:flex; flex-direction:column; gap:2px; }
-    .brand b{ letter-spacing:0.4px; }
-    .brand small{ color:var(--muted); }
-    .pillbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .brand b{ letter-spacing:0.4px; font-weight:800; }
+    .brand small{ color: var(--muted); font-size:12px; }
+
+    /* Boutons sans effet */
     .btn{
       border:1px solid var(--line);
-      background: var(--glass);
-      color:var(--fg);
+      background: var(--panel);
+      color: var(--fg);
       padding:9px 12px;
       border-radius: 999px;
       cursor:pointer;
-      transition: transform 0.05s ease, background 0.15s ease;
       font-weight:650;
       user-select:none;
+      transition: none;           /* pas d'effet */
+      box-shadow:none;
     }
-    .btn:hover{ background: var(--glass2); }
-    .btn:active{ transform: translateY(1px); }
-    .btn.ok{ border-color: var(--ok); }
+    .btn:active{ transform:none; }  /* pas d'effet */
+    .btn.ok{ border-color: var(--accent); }
     .btn.warn{ border-color: var(--warn); }
     .btn.bad{ border-color: var(--bad); }
-    .btn.ghost{ background: transparent; }
-    .chips{ display:flex; gap:8px; flex-wrap:wrap; }
-    .chip{
-      padding:6px 10px; border:1px solid var(--line); border-radius:999px;
-      background: rgba(0,0,0,0.08);
-      font-size:12px; color:var(--muted);
-    }
-    @media (prefers-color-scheme: light){ .chip{ background: rgba(255,255,255,0.55);} }
 
-    /* Layout */
-    .main{
+    .pillbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
+
+    /* Layout global: sidebar gauche + contenu */
+    .wrap{
+      max-width: 1400px;
+      margin:0 auto;
+      padding: 12px 14px 20px;
       display:grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: 360px 1fr;
       gap:12px;
-      margin-top:12px;
     }
-    .card{
-      background: var(--glass);
+    @media (max-width: 980px){
+      .wrap{ grid-template-columns:1fr; }
+    }
+
+    aside{
+      background: var(--panel);
+      border:1px solid var(--line);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position: sticky;
+      top: 62px;
+      height: calc(100vh - 76px);
+    }
+    @media (max-width: 980px){
+      aside{ position: relative; top:auto; height:auto; }
+    }
+
+    .sidehead{
+      padding:12px 12px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .sidehead b{ font-size:14px; }
+    .sidebody{
+      padding: 12px 12px;
+      overflow:auto;
+      height: calc(100% - 54px);
+    }
+
+    main .card{
+      background: var(--panel);
       border:1px solid var(--line);
       border-radius: var(--r);
       box-shadow: var(--shadow);
       overflow:hidden;
     }
-    .card h3{
-      margin:0; padding:12px 14px;
+    .cardhead{
+      padding:12px 14px;
       border-bottom:1px solid var(--line);
-      font-size:15px;
-      display:flex; justify-content:space-between; align-items:center;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      flex-wrap:wrap;
     }
-    .card h3 span{ color:var(--muted); font-weight:500; font-size:12px; }
-    .body{ padding:12px 14px; }
-    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    .cardhead b{ font-size:14px; }
+    .chip{
+      border:1px solid var(--line);
+      background: var(--panel2);
+      color: var(--muted);
+      padding:6px 10px;
+      border-radius: 999px;
+      font-size:12px;
+      white-space:nowrap;
+    }
+
+    .body{ padding: 12px 14px; }
+
+    label{ display:block; color: var(--muted); font-size:12px; margin:10px 0 6px; }
     input, select, textarea{
       width:100%;
-      background: rgba(0,0,0,0.12);
       border:1px solid var(--line);
-      color:var(--fg);
+      background: rgba(0,0,0,0.10);
+      color: var(--fg);
       border-radius: 12px;
       padding:10px 10px;
       font: inherit;
       outline:none;
     }
-    @media (prefers-color-scheme: light){
-      input, select, textarea{ background: rgba(255,255,255,0.88); }
+    [data-theme="light"] input,
+    [data-theme="light"] select,
+    [data-theme="light"] textarea{
+      background: rgba(255,255,255,0.92);
     }
-    textarea{ min-height: 90px; resize: vertical; }
-    .mono{ font-family:var(--mono); }
+    textarea{ min-height: 120px; resize: vertical; }
+    .mono{ font-family: var(--mono); }
+
     .row{ display:flex; gap:10px; flex-wrap:wrap; }
-    .col{ flex:1 1 260px; min-width:260px; }
-    .muted{ color:var(--muted); }
-    .toolbar{
-      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
-      padding:10px 14px; border-top:1px solid var(--line);
-      background: rgba(0,0,0,0.06);
-    }
-    @media (prefers-color-scheme: light){ .toolbar{ background: rgba(255,255,255,0.55);} }
+    .col{ flex:1 1 220px; min-width:220px; }
 
-    /* Tabs */
-    .tabs{
-      display:flex; gap:8px; flex-wrap:wrap;
-      padding:10px 14px;
-      border-bottom:1px solid var(--line);
-      background: rgba(0,0,0,0.05);
-    }
-    @media (prefers-color-scheme: light){ .tabs{ background: rgba(255,255,255,0.55);} }
-    .tab{
-      padding:8px 10px;
-      border:1px solid var(--line);
-      border-radius: 999px;
-      cursor:pointer;
-      background: rgba(0,0,0,0.08);
-      color:var(--muted);
-      font-weight:650;
-      user-select:none;
-    }
-    @media (prefers-color-scheme: light){ .tab{ background: rgba(255,255,255,0.65);} }
-    .tab.active{
-      color:var(--fg);
-      border-color: rgba(46,229,157,0.40);
-      outline: 2px solid rgba(46,229,157,0.20);
-    }
-
-    /* Checklist blocks */
-    .block{
+    /* Sections */
+    .section{
       border:1px solid var(--line);
       border-radius: 14px;
       padding:10px 10px;
-      background: rgba(0,0,0,0.08);
+      background: rgba(0,0,0,0.06);
       margin-top:10px;
     }
-    @media (prefers-color-scheme: light){ .block{ background: rgba(255,255,255,0.65);} }
-    .block h4{
-      margin:0 0 6px;
-      font-size:13px;
-      display:flex; justify-content:space-between; align-items:center;
+    [data-theme="light"] .section{ background: rgba(255,255,255,0.60); }
+
+    .sectionhead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-bottom:8px;
     }
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    @media (max-width:900px){ .grid2{ grid-template-columns:1fr; } }
-    .opt{
-      display:flex; gap:10px; align-items:flex-start;
-      padding:8px 8px;
+    .sectionhead b{ font-size:13px; }
+    .small{ color: var(--muted); font-size:12px; }
+
+    /* Checklist */
+    .checkgrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px;
+    }
+    @media (max-width: 980px){
+      .checkgrid{ grid-template-columns:1fr; }
+    }
+    .chk{
       border:1px solid var(--line);
       border-radius: 12px;
+      padding:8px 10px;
+      display:flex; gap:10px; align-items:flex-start;
       background: rgba(0,0,0,0.06);
     }
-    @media (prefers-color-scheme: light){ .opt{ background: rgba(255,255,255,0.70);} }
-    .opt input{ width:auto; margin-top:3px; }
-    .opt .t{ flex:1; }
-    .opt .t b{ display:block; font-size:13px; }
-    .opt .t small{ display:block; color:var(--muted); font-size:12px; margin-top:3px; }
+    [data-theme="light"] .chk{ background: rgba(255,255,255,0.70); }
+    .chk input{ width:auto; margin-top:3px; }
+    .chk b{ font-size:13px; }
+    .chk small{ color: var(--muted); display:block; margin-top:2px; font-size:12px; }
 
-    /* Drawer */
-    .drawerBack{
-      position:fixed; inset:0; z-index:20;
-      background: rgba(0,0,0,0.35);
-      display:none;
-    }
-    .drawer{
-      position:fixed; top:0; right:-520px; height:100vh; width:520px;
-      max-width: 92vw;
-      z-index:21;
-      border-left:1px solid var(--line);
-      background: rgba(15,17,21,0.62);
-      backdrop-filter: blur(16px);
-      box-shadow: var(--shadow);
-      transition: right 0.18s ease;
-      display:flex; flex-direction:column;
-    }
-    @media (prefers-color-scheme: light){
-      .drawer{ background: rgba(247,248,251,0.78); }
-    }
-    .drawerHead{
-      padding:12px 14px;
-      border-bottom:1px solid var(--line);
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-    }
-    .drawerHead b{ letter-spacing:0.3px; }
-    .drawerBody{ padding:12px 14px; overflow:auto; }
+    /* Sidebar list */
     .list{ display:flex; flex-direction:column; gap:8px; }
     .item{
-      padding:10px 12px;
-      border-radius: 14px;
       border:1px solid var(--line);
-      background: rgba(0,0,0,0.10);
-      cursor:pointer;
-      display:flex; flex-direction:column; gap:4px;
-    }
-    @media (prefers-color-scheme: light){
-      .item{ background: rgba(255,255,255,0.70); }
-    }
-    .item.active{ outline:2px solid rgba(46,229,157,0.35); }
-    .item b{ font-size:14px; }
-    .item small{ color:var(--muted); }
-    .drawerFoot{
-      padding:10px 14px; border-top:1px solid var(--line);
-      display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
+      border-radius: 14px;
+      padding:10px 10px;
       background: rgba(0,0,0,0.06);
+      cursor:pointer;
     }
-    @media (prefers-color-scheme: light){ .drawerFoot{ background: rgba(255,255,255,0.55);} }
+    [data-theme="light"] .item{ background: rgba(255,255,255,0.70); }
+    .item.active{ outline: 2px solid rgba(46,229,157,0.25); }
+    .item b{ display:block; font-size:13px; }
+    .item small{ display:block; color:var(--muted); margin-top:3px; font-size:12px; }
 
-    /* Focus */
-    body.focus .tabs { display:none; } /* focus = pas d’onglets, on montre juste l’essentiel choisi par template */
-    body.focus .focusHide { display:none !important; }
-    body.focus .btn:not(.focusKeep){ display:none; } /* top bar minimal */
-    body.focus .card h3 span{ display:none; }
+    /* Output */
+    .outputwrap{ margin-top:10px; }
+    .toolbar{
+      padding: 10px 14px;
+      border-top:1px solid var(--line);
+      display:flex; gap:8px; flex-wrap:wrap;
+      justify-content:flex-end;
+      background: rgba(0,0,0,0.04);
+    }
+    [data-theme="light"] .toolbar{ background: rgba(255,255,255,0.55); }
+
+    /* Focus mode: on cache presque tout sauf les checklists + génération */
+    body.focus aside{ display:none; }
+    body.focus .wrap{ grid-template-columns: 1fr; }
+    body.focus .focusHide{ display:none !important; }
   </style>
 </head>
-<body>
+
+<body data-theme="dark">
 <header>
-  <div class="wrap top">
+  <div class="topbar">
     <div class="brand">
-      <b>PSY-WRITER v0.2</b>
-      <small>Cases → phrases • MSE systématique • Templates • Offline localStorage</small>
+      <b>PSY-WRITER</b>
+      <small>Notes • rapports • emails • sevrage — offline (localStorage)</small>
     </div>
+
     <div class="pillbar">
-      <button class="btn focusKeep" id="btnFocus">Focus</button>
-      <button class="btn" id="btnDrawer">Templates / Paramètres</button>
+      <button class="btn" id="btnTheme">Mode clair/sombre</button>
+      <button class="btn" id="btnFocus">Focus</button>
       <button class="btn ok" id="btnGenerate">Générer</button>
       <button class="btn" id="btnCopy">Copier</button>
       <button class="btn warn" id="btnExport">Exporter</button>
@@ -248,120 +257,104 @@
 </header>
 
 <div class="wrap">
-  <div class="chips">
-    <span class="chip" id="chipDoc">Document : —</span>
-    <span class="chip" id="chipTab">Onglet : —</span>
-    <span class="chip" id="chipAutosave">Auto-save : ON</span>
-  </div>
 
-  <div class="main">
-    <div class="card">
-      <div class="tabs focusHide" id="tabs"></div>
+  <!-- Sidebar gauche -->
+  <aside id="sidebar">
+    <div class="sidehead">
+      <b>Paramètres & modèles</b>
+      <button class="btn" id="btnHideSide">Masquer</button>
+    </div>
+    <div class="sidebody">
+      <label>Type</label>
+      <select id="mode">
+        <option value="clinical">Clinique</option>
+        <option value="email">Email</option>
+        <option value="taper">Schéma sevrage</option>
+      </select>
 
-      <div class="body" id="tabBody"></div>
-
-      <div class="toolbar">
-        <span class="muted" style="margin-right:auto; font-size:12px;">Astuce : tu peux tout faire en cases + 2 champs libres.</span>
-        <button class="btn" id="btnToggleOutput">Afficher/Masquer sortie</button>
+      <div class="section">
+        <div class="sectionhead">
+          <b>Modèles</b>
+          <span class="small" id="countTpl"></span>
+        </div>
+        <input id="searchTpl" placeholder="rechercher (travail, consult, sevrage…)" />
+        <div style="height:8px;"></div>
+        <div class="list" id="tplList"></div>
       </div>
 
-      <div class="body" id="outputWrap">
+      <div class="section">
+        <div class="sectionhead"><b>Identité & style</b></div>
+        <label>Identité (optionnel)</label>
+        <input id="identite" placeholder="Mme X / M. Y / Initiales" />
+        <label>Pronoms</label>
+        <select id="civilite">
+          <option value="F">F (elle)</option>
+          <option value="M">M (il)</option>
+          <option value="N">N (neutre)</option>
+        </select>
+        <label>Signature email</label>
+        <input id="signature" placeholder="Dr … / Service …" />
+      </div>
+
+      <div class="section">
+        <div class="sectionhead"><b>Affichage</b></div>
+        <div class="row">
+          <button class="btn" id="btnCompact">Compact</button>
+          <button class="btn" id="btnFull">Complet</button>
+        </div>
+        <small class="small">Compact = moins de sections visibles.</small>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+    <div class="card">
+      <div class="cardhead">
+        <b id="docTitle">—</b>
+        <div class="row" style="gap:8px;">
+          <span class="chip" id="chipMode">Mode : —</span>
+          <span class="chip" id="chipTpl">Modèle : —</span>
+        </div>
+      </div>
+
+      <div class="body" id="content"></div>
+
+      <div class="body outputwrap" id="outputWrap">
         <label>Texte final (modifiable)</label>
-        <textarea id="output" class="mono" style="min-height:280px;"></textarea>
+        <textarea id="output" class="mono" style="min-height:300px;"></textarea>
       </div>
 
       <div class="toolbar">
         <button class="btn ok" id="btnGenerate2">Générer</button>
         <button class="btn" id="btnCopy2">Copier</button>
-        <button class="btn" id="btnClearCurrent">Effacer saisie (ce document)</button>
+        <button class="btn" id="btnToggleOut">Afficher/Masquer sortie</button>
+        <button class="btn bad" id="btnClear">Effacer saisie (ce modèle)</button>
       </div>
     </div>
-  </div>
+  </main>
+
 </div>
-
-<!-- Drawer -->
-<div class="drawerBack" id="drawerBack"></div>
-<aside class="drawer" id="drawer">
-  <div class="drawerHead">
-    <div>
-      <b>Templates & Paramètres</b>
-      <div class="muted" style="font-size:12px; margin-top:2px;">Masque tout et travaille propre.</div>
-    </div>
-    <button class="btn" id="btnCloseDrawer">Fermer</button>
-  </div>
-  <div class="drawerBody">
-    <label>Rechercher</label>
-    <input id="searchTpl" placeholder="suivi, travail, sevrage, liaison…"/>
-
-    <div class="row">
-      <div class="col" style="min-width:180px;">
-        <button class="btn ok" id="btnNewTpl" style="width:100%;">+ Nouveau template</button>
-      </div>
-      <div class="col" style="min-width:180px;">
-        <button class="btn" id="btnDuplicate" style="width:100%;">Dupliquer</button>
-      </div>
-    </div>
-
-    <div style="height:8px;"></div>
-    <div class="list" id="tplList"></div>
-
-    <div class="block">
-      <h4>Édition rapide (optionnel)</h4>
-      <label>Nom</label>
-      <input id="editName"/>
-      <label>Catégorie</label>
-      <input id="editCategory"/>
-      <label>Description</label>
-      <input id="editDesc"/>
-
-      <label>Texte modèle (placeholders)</label>
-      <textarea id="editTemplate" class="mono" style="min-height:160px;" spellcheck="false"></textarea>
-      <small class="muted">
-        Placeholders : {{today}} • {{p.sujet}} {{p.objet}} {{p.poss}} • {{identite}} • {{diagnostic}} • etc.
-      </small>
-
-      <div class="row">
-        <div class="col">
-          <button class="btn ok" id="btnSaveTpl" style="width:100%;">Enregistrer template</button>
-        </div>
-        <div class="col">
-          <button class="btn bad" id="btnDeleteTpl" style="width:100%;">Supprimer</button>
-        </div>
-      </div>
-
-      <label style="margin-top:12px;">Mode visibilité</label>
-      <div class="row">
-        <div class="col" style="min-width:180px;">
-          <button class="btn" id="btnCompact">UI compacte</button>
-        </div>
-        <div class="col" style="min-width:180px;">
-          <button class="btn" id="btnFull">UI complète</button>
-        </div>
-      </div>
-      <small class="muted">Compact = moins d’onglets visibles (tu choisis ton strict nécessaire).</small>
-    </div>
-  </div>
-
-  <div class="drawerFoot">
-    <button class="btn" id="btnCloseDrawer2">Fermer</button>
-  </div>
-</aside>
 
 <script>
 /* =========================================================
-   PSY-WRITER v0.2 — Cases -> phrases + MSE + templates
-   Offline • localStorage • export/import JSON
+   PSY-WRITER v1 — Offline localStorage
+   - Clinique : checklists => texte fluide
+   - Email : modèles prêts (bonjour + formule)
+   - Sevrage : tableau auto (Valium / Ténesta)
    ========================================================= */
 
-const LS_KEY = "psy_writer_v02_templates";
-const LS_STATE = "psy_writer_v02_state";
+const LS_KEY = "psywriter_v1_state";
 
 /* ---------- Utils ---------- */
-const $ = (id)=> document.getElementById(id);
+const $ = (id)=>document.getElementById(id);
 const uid = ()=> Math.random().toString(16).slice(2) + Date.now().toString(16);
-const todayFR = ()=>{
-  const d=new Date();
-  const pad=n=>String(n).padStart(2,"0");
+const todayISO = ()=> {
+  const d=new Date(); const pad=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+};
+const todayFR = ()=> {
+  const d=new Date(); const pad=n=>String(n).padStart(2,"0");
   return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
 };
 function pronouns(set){
@@ -369,1433 +362,1384 @@ function pronouns(set){
   if(set==="M") return {sujet:"il", objet:"le", poss:"sa", poss2:"son", accord:""};
   return {sujet:"la personne", objet:"la personne", poss:"son", poss2:"son", accord:"e"};
 }
-function escapeHtml(s){
-  return String(s ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
+function cleanSpaces(s){
+  return String(s||"")
+    .replace(/[ \t]+\n/g,"\n")
+    .replace(/\n{3,}/g,"\n\n")
+    .replace(/[ \t]{2,}/g," ")
+    .trim();
+}
+function sentenceJoin(chunks){
+  // join phrases with commas, then last with "et" if needed; returns one sentence chunk
+  const a = chunks.filter(Boolean).map(x=>String(x).trim()).filter(Boolean);
+  if(!a.length) return "";
+  if(a.length===1) return a[0];
+  if(a.length===2) return a[0] + " et " + a[1];
+  return a.slice(0,-1).join(", ") + ", et " + a[a.length-1];
+}
+function paragraphJoin(sentences){
+  const a = sentences.filter(Boolean).map(x=>String(x).trim()).filter(Boolean);
+  return a.length ? a.join(" ") : "";
+}
+function checkboxItem(container, item, checked, onChange){
+  const div=document.createElement("div");
+  div.className="chk";
+  const cb=document.createElement("input");
+  cb.type="checkbox";
+  cb.checked=!!checked;
+  cb.onchange=()=>onChange(cb.checked);
+
+  const t=document.createElement("div");
+  const b=document.createElement("b"); b.textContent=item.label;
+  const s=document.createElement("small"); s.textContent=item.help || item.phrase || "";
+  t.appendChild(b);
+  if(item.help || item.phrase) t.appendChild(s);
+
+  div.appendChild(cb);
+  div.appendChild(t);
+  container.appendChild(div);
 }
 
-/* ---------- “Packs” syndromes : cases -> phrases ---------- */
-const SYNDROME_PACKS = {
+/* ---------- Packs (checklists) ---------- */
+// Syndromes
+const PACKS = {
   anxieux: {
-    title: "Syndrome anxieux",
-    items: [
-      {id:"anx_tension", label:"Tension interne / agitation", phrase:"tension interne marquée, difficulté à relâcher le contrôle"},
-      {id:"anx_rumi", label:"Ruminations / pensées envahissantes", phrase:"pensées envahissantes et ruminations anxieuses"},
-      {id:"anx_panic", label:"Crises d’angoisse", phrase:"crises d’angoisse paroxystiques"},
+    title:"Syndrome anxieux",
+    items:[
       {id:"anx_social", label:"Anxiété sociale", phrase:"anxiété sociale importante avec évitement"},
+      {id:"anx_panic", label:"Crises d’angoisse", phrase:"crises d’angoisse paroxystiques"},
+      {id:"anx_rumi", label:"Ruminations", phrase:"ruminations anxieuses envahissantes"},
       {id:"anx_hyperv", label:"Hypervigilance", phrase:"hypervigilance et sentiment d’insécurité"},
-      {id:"anx_sleep", label:"Troubles du sommeil", phrase:"troubles du sommeil (endormissement difficile, sommeil non réparateur)"},
-      {id:"anx_soma", label:"Somatisation", phrase:"retentissement somatique (tensions, palpitations, oppression)"},
-      {id:"anx_function", label:"Retentissement", phrase:"retentissement fonctionnel significatif sur le quotidien"}
+      {id:"anx_sleep", label:"Sommeil", phrase:"troubles du sommeil avec sommeil non réparateur"},
+      {id:"anx_ret", label:"Retentissement", phrase:"retentissement fonctionnel significatif"}
     ]
   },
   anxiodepressif: {
-    title: "Syndrome anxiodépressif",
-    items: [
-      {id:"ad_anx", label:"Anxiété au premier plan", phrase:"anxiété au premier plan, avec ruminations et hypervigilance"},
-      {id:"ad_down", label:"Affects dépressifs", phrase:"affects dépressifs avec baisse de l’élan et perte de plaisir"},
-      {id:"ad_fatigue", label:"Fatigabilité", phrase:"fatigabilité importante et épuisement"},
-      {id:"ad_conc", label:"Attention / concentration", phrase:"difficultés d’attention et de concentration"},
-      {id:"ad_sleep", label:"Sommeil", phrase:"troubles du sommeil (insomnie et/ou sommeil non réparateur)"},
-      {id:"ad_app", label:"Appétit", phrase:"altération de l’appétit"},
-      {id:"ad_ideo", label:"Idées noires diffuses", phrase:"idées noires diffuses, sans planification rapportée"},
-      {id:"ad_function", label:"Retentissement", phrase:"retentissement fonctionnel majeur"}
+    title:"Syndrome anxiodépressif",
+    items:[
+      {id:"ad_anx", label:"Anxiété au premier plan", phrase:"anxiété au premier plan"},
+      {id:"ad_down", label:"Affects dépressifs", phrase:"affects dépressifs avec baisse de l’élan"},
+      {id:"ad_fatigue", label:"Épuisement", phrase:"fatigabilité importante et épuisement"},
+      {id:"ad_conc", label:"Attention", phrase:"difficultés d’attention et de concentration"},
+      {id:"ad_sleep", label:"Sommeil", phrase:"troubles du sommeil marqués"},
+      {id:"ad_ideo", label:"Idées noires diffuses", phrase:"idées noires diffuses sans planification rapportée"}
     ]
   },
   depressif: {
-    title: "Syndrome dépressif",
-    items: [
-      {id:"dep_trist", label:"Tristesse / abattement", phrase:"abattement thymique avec tristesse persistante"},
+    title:"Syndrome dépressif",
+    items:[
       {id:"dep_anhed", label:"Anhédonie", phrase:"anhédonie et perte d’intérêt"},
-      {id:"dep_vital", label:"Baisse élan vital", phrase:"baisse de l’élan vital"},
+      {id:"dep_vital", label:"Élan vital", phrase:"baisse de l’élan vital"},
+      {id:"dep_guilt", label:"Dévalorisation", phrase:"auto-dévalorisation et culpabilité"},
       {id:"dep_sleep", label:"Sommeil", phrase:"troubles du sommeil"},
-      {id:"dep_app", label:"Appétit", phrase:"modification de l’appétit"},
-      {id:"dep_guilt", label:"Auto-dévalorisation", phrase:"auto-dévalorisation et sentiment de culpabilité"},
-      {id:"dep_psycho", label:"Ralentissement", phrase:"ralentissement psychomoteur ou majoration de la fatigabilité"},
-      {id:"dep_ideo", label:"Idées suicidaires", phrase:"idées suicidaires (à préciser au plan clinique)"}
+      {id:"dep_app", label:"Appétit", phrase:"altération de l’appétit"},
+      {id:"dep_ideo", label:"Idées suicidaires", phrase:"idées suicidaires (à préciser cliniquement)"}
     ]
   },
   traumatique: {
-    title: "Syndrome post-traumatique",
-    items: [
-      {id:"ptsd_reexp", label:"Réexpériences", phrase:"réexpériences intrusives (images, cauchemars)"},
-      {id:"ptsd_avoid", label:"Évitement", phrase:"évitement des déclencheurs et restriction des activités"},
-      {id:"ptsd_hyper", label:"Hyperactivation", phrase:"hyperactivation neurovégétative (hypervigilance, sursaut)"},
+    title:"Syndrome post-traumatique",
+    items:[
+      {id:"ptsd_reexp", label:"Réexpériences", phrase:"réexpériences intrusives (images/cauchemars)"},
+      {id:"ptsd_avoid", label:"Évitement", phrase:"évitement des déclencheurs"},
+      {id:"ptsd_hyper", label:"Hyperactivation", phrase:"hyperactivation avec hypervigilance/sursaut"},
       {id:"ptsd_sleep", label:"Sommeil", phrase:"troubles du sommeil marqués"},
-      {id:"ptsd_cogn", label:"Altérations cognitives", phrase:"ruminations centrées sur la sécurité et le contrôle"},
-      {id:"ptsd_mood", label:"Affects", phrase:"irritabilité, anxiété, affects dépressifs associés"},
-      {id:"ptsd_diss", label:"Dissociation (si présent)", phrase:"éléments dissociatifs rapportés"},
-      {id:"ptsd_function", label:"Retentissement", phrase:"retentissement fonctionnel significatif"}
-    ]
-  },
-  addictions: {
-    title: "Consommations / usage",
-    items: [
-      {id:"sub_alc", label:"Alcool", phrase:"usage d’alcool à visée anxiolytique / régulatrice"},
-      {id:"sub_can", label:"Cannabis", phrase:"usage de cannabis, avec retentissement sur l’humeur et la motivation"},
-      {id:"sub_coc", label:"Stimulants", phrase:"usage de stimulants / cocaïne rapporté"},
-      {id:"sub_bzd", label:"Benzodiazépines", phrase:"usage de benzodiazépines (prescrites ou non), à préciser"},
-      {id:"sub_red", label:"Diminution récente", phrase:"diminution récente des consommations, avec mise en place de stratégies alternatives"},
-      {id:"sub_risk", label:"Risque", phrase:"risque de rechute à surveiller, avec travail de réduction des risques"}
+      {id:"ptsd_ret", label:"Retentissement", phrase:"retentissement fonctionnel significatif"}
     ]
   }
 };
 
-/* ---------- MSE (examen mental) systématique ---------- */
-const MSE_DOMAINS = [
-  {id:"mse_app", label:"Apparence / présentation", opts:["soignée","négligée","fatiguée","adaptée","agitation visible"]},
-  {id:"mse_contact", label:"Contact / alliance", opts:["bon contact","méfiant·e","repli","collaborant·e","difficile à mobiliser"]},
-  {id:"mse_speech", label:"Discours", opts:["cohérent","logorrhéique","ralenti","pauvre","tangentiellement","difficile à interrompre"]},
-  {id:"mse_mood", label:"Humeur / affects", opts:["anxieux·se","dépressif·ve","labilité émotionnelle","irritable","euthymique","émoussement affectif"]},
-  {id:"mse_thought", label:"Pensée", opts:["ruminations","idées noires","idées délirantes (à préciser)","idées de référence","pensées envahissantes","obsessions"]},
-  {id:"mse_percep", label:"Perceptions", opts:["pas d’hallucinations rapportées","hallucinations auditives (à préciser)","hallucinations visuelles (à préciser)","hyperacousie / hypersensibilité"]},
-  {id:"mse_cogn", label:"Cognition", opts:["attention fluctuante","concentration difficile","orientation OK","mémoire OK","fatigabilité cognitive"]},
-  {id:"mse_insight", label:"Insight / jugement", opts:["insight présent","insight partiel","altération du jugement","capacité critique préservée"]},
-  {id:"mse_risk", label:"Sécurité", opts:["pas d’idéation suicidaire active","idées noires diffuses","idéation suicidaire (à préciser)","pas de plan","plan/intentionalité (à préciser)"]}
+// Consommations
+const ADDICTO = {
+  title:"Consommations",
+  items:[
+    {id:"sub_alc", label:"Alcool", phrase:"un usage d’alcool à visée anxiolytique"},
+    {id:"sub_can", label:"Cannabis", phrase:"un usage de cannabis"},
+    {id:"sub_coc", label:"Stimulants", phrase:"un usage de stimulants"},
+    {id:"sub_bzd", label:"Benzodiazépines", phrase:"un usage de benzodiazépines (à préciser)"},
+    {id:"sub_red", label:"Diminution récente", phrase:"une diminution récente des consommations"},
+    {id:"sub_sport", label:"Sport ressource", phrase:"un réinvestissement d’activités ressources (notamment le sport)"}
+  ]
+};
+
+// Examen mental (phrases par domaine)
+const MSE = [
+  {id:"app", label:"Présentation", items:[
+    {id:"app_ok", label:"Adaptée", phrase:"présentation adaptée"},
+    {id:"app_fat", label:"Fatiguée", phrase:"présentation fatiguée"},
+    {id:"app_neg", label:"Négligée", phrase:"présentation négligée"}
+  ]},
+  {id:"contact", label:"Contact", items:[
+    {id:"ct_ok", label:"Bon contact", phrase:"bon contact"},
+    {id:"ct_coll", label:"Collaborant·e", phrase:"attitude calme et collaborante"},
+    {id:"ct_mef", label:"Méfiance", phrase:"contact méfiant / prudent"},
+    {id:"ct_repl", label:"Repli", phrase:"repli relationnel"}
+  ]},
+  {id:"disc", label:"Discours", items:[
+    {id:"ds_coh", label:"Cohérent", phrase:"discours cohérent et organisé"},
+    {id:"ds_ral", label:"Ralentissement", phrase:"discours ralenti"},
+    {id:"ds_logo", label:"Logorrhée", phrase:"discours logorrhéique"},
+    {id:"ds_pau", label:"Pauvreté", phrase:"pauvreté du discours"}
+  ]},
+  {id:"mood", label:"Humeur / affects", items:[
+    {id:"md_anx", label:"Anxieux·se", phrase:"humeur anxieuse"},
+    {id:"md_dep", label:"Dépressif·ve", phrase:"humeur dépressive"},
+    {id:"md_lab", label:"Labilité", phrase:"labilité émotionnelle"},
+    {id:"md_irr", label:"Irritabilité", phrase:"irritabilité"},
+    {id:"md_ok", label:"Neutre/posée", phrase:"affects globalement posés"}
+  ]},
+  {id:"thought", label:"Pensée", items:[
+    {id:"th_rum", label:"Ruminations", phrase:"ruminations envahissantes"},
+    {id:"th_inv", label:"Pensées envahissantes", phrase:"pensées envahissantes"},
+    {id:"th_black", label:"Idées noires", phrase:"idées noires"},
+    {id:"th_del", label:"Idées délirantes", phrase:"idées délirantes (à préciser)"},
+    {id:"th_obs", label:"Obsessions", phrase:"obsessions"}
+  ]},
+  {id:"percep", label:"Perceptions", items:[
+    {id:"pc_none", label:"Pas de trouble perceptif rapporté", phrase:"aucun trouble perceptif rapporté"},
+    {id:"pc_hyp", label:"Hypersensibilité/hyperacousie", phrase:"hypersensibilité sensorielle (dont au bruit)"},
+    {id:"pc_hal", label:"Hallucinations (à préciser)", phrase:"troubles perceptifs rapportés (à préciser)"}
+  ]},
+  {id:"cogn", label:"Cognition", items:[
+    {id:"cg_att", label:"Attention fluctuante", phrase:"attention fluctuante"},
+    {id:"cg_fat", label:"Fatigabilité cognitive", phrase:"fatigabilité cognitive"},
+    {id:"cg_ok", label:"Orientation OK", phrase:"orientation préservée"}
+  ]},
+  {id:"insight", label:"Insight / jugement", items:[
+    {id:"in_ok", label:"Insight présent", phrase:"insight présent"},
+    {id:"in_part", label:"Insight partiel", phrase:"insight partiel"},
+    {id:"in_judg", label:"Jugement fragile", phrase:"jugement à surveiller"}
+  ]},
+  {id:"risk", label:"Sécurité", items:[
+    {id:"rk_none", label:"Pas d’idéation suicidaire active", phrase:"pas d’idéation suicidaire active"},
+    {id:"rk_diff", label:"Idées noires diffuses", phrase:"idées noires diffuses"},
+    {id:"rk_plan", label:"Plan/intentionalité (à préciser)", phrase:"éléments d’idéation suicidaire avec plan (à préciser)"}
+  ]}
 ];
 
-/* ---------- Médication (documentation) ---------- */
-const MED_SETS = [
-  {id:"med_ad", label:"Antidépresseur", examples:["escitalopram","sertraline","fluoxétine","venlafaxine","mirtazapine"], phrase:"un traitement antidépresseur ({{med_ad_name}} {{med_ad_dose}})"},
-  {id:"med_ap", label:"Antipsychotique", examples:["olanzapine","quetiapine","aripiprazole","rispéridone"], phrase:"un traitement antipsychotique ({{med_ap_name}} {{med_ap_dose}})"},
-  {id:"med_anx", label:"Anxiolytique / hydroxyzine", examples:["hydroxyzine"], phrase:"un traitement symptomatique anxiolytique ({{med_anx_name}} {{med_anx_dose}})"},
-  {id:"med_sleep", label:"Sommeil", examples:["trazodone","mélatonine"], phrase:"un traitement ciblant le sommeil ({{med_sleep_name}} {{med_sleep_dose}})"},
-  {id:"med_add", label:"Addictologie", examples:["acamprosate","naltrexone","baclofène"], phrase:"un traitement de soutien en addictologie ({{med_add_name}} {{med_add_dose}})"}
-];
+// Prise en charge / plan
+const CARE = {
+  title:"Prise en charge",
+  items:[
+    {id:"ca_follow", label:"Suivi psy régulier", phrase:"poursuite d’un suivi psychiatrique régulier"},
+    {id:"ca_psy", label:"Suivi psychologue", phrase:"suivi psychothérapeutique en cours"},
+    {id:"ca_hdj", label:"HDJ", phrase:"mise en place d’une prise en charge en hôpital de jour"},
+    {id:"ca_group", label:"Groupe psychoéducation", phrase:"proposition d’intégration dans un groupe de psychoéducation"},
+    {id:"ca_tools", label:"Régulation émotionnelle", phrase:"travail de psychoéducation et régulation émotionnelle"}
+  ]
+};
 
-/* ---------- Templates (doc types) ---------- */
-const DEFAULT_TEMPLATES = [
+const WORK = {
+  title:"Travail",
+  items:[
+    {id:"wk_no", label:"Non compatible", phrase:"À ce stade, l’état clinique actuel n’est pas compatible avec une reprise d’activité professionnelle."},
+    {id:"wk_part", label:"Partiel à discuter", phrase:"Une reprise partielle/progressive pourra être discutée selon l’évolution."},
+    {id:"wk_ok", label:"Compatible", phrase:"L’évolution est compatible avec une reprise progressive (à cadrer)."}
+  ]
+};
+
+// Emails
+const EMAIL_TPL = [
   {
-    id: uid(),
-    name: "Rapport / attestation — arrêt de travail (anxiété à l’avant-plan)",
-    category: "Travail / Médecin-conseil",
-    desc: "Suivi régulier • évolution lente • HDJ possible",
-    ui: { compactTabs:["identite","diag","syndromes","mse","prise","capacite","plan"], fullTabs:["identite","contexte","diag","syndromes","mse","prise","capacite","plan"] },
-    template:
-`Attestation médicale
+    id:"em_attach",
+    name:"Envoi document en pièce jointe",
+    subject:"Transmission du document",
+    fields:["toName","context","attachmentName"],
+    body:(v)=>`Bonjour ${v.toName||""},
 
-Je vois en consultation de psychiatrie {{identite}} pour {{diagnostic}}.
+Veuillez trouver en pièce jointe ${v.attachmentName||"le document demandé"}.
+${v.context?("\n"+v.context+"\n"):""}
 
-Sur le plan clinique, {{syndrome_sentence}}. {{mse_sentence}}
+Bien à vous,
+${v.signature||""}`.trim()
+  },
+  {
+    id:"em_resched",
+    name:"Changement de rendez-vous",
+    subject:"Modification de rendez-vous",
+    fields:["toName","oldDate","newDate","reason"],
+    body:(v)=>`Bonjour ${v.toName||""},
 
-La prise en charge consiste en {{care_sentence}}. {{plan_sentence}}
+Je reviens vers vous concernant le rendez-vous prévu le ${v.oldDate||"__"}.
+Je vous propose de le déplacer au ${v.newDate||"__"}.
+${v.reason?("\nMotif : "+v.reason+"\n"):""}
 
-À ce stade, l’état clinique actuel est {{work_sentence}}.
+Merci de me confirmer si cela vous convient.
+
+Bien à vous,
+${v.signature||""}`.trim()
+  },
+  {
+    id:"em_ack",
+    name:"Accusé de réception (je réponds plus tard)",
+    subject:"Bien reçu",
+    fields:["toName","topic"],
+    body:(v)=>`Bonjour ${v.toName||""},
+
+Bien reçu pour votre message${v.topic?(" concernant "+v.topic):""}.
+Je prends note et je reviens vers vous dès que possible.
+
+Bien à vous,
+${v.signature||""}`.trim()
+  },
+  {
+    id:"em_request",
+    name:"Demande d’informations/documents",
+    subject:"Demande d’informations",
+    fields:["toName","request"],
+    body:(v)=>`Bonjour ${v.toName||""},
+
+Afin de pouvoir finaliser le suivi/les démarches, auriez-vous la possibilité de me transmettre ${v.request||"les éléments suivants"} ?
+
+Merci d’avance.
+
+Bien à vous,
+${v.signature||""}`.trim()
+  }
+];
+
+/* ---------- Clinical templates ---------- */
+const CLIN_TPL = [
+  {
+    id:"cl_att_work",
+    name:"Attestation / travail (anxiété au 1er plan)",
+    build:(v)=> {
+      const p = pronouns(v.civilite);
+      const ident = v.identite || "la personne";
+      const dx = v.diagnostic || "un trouble anxiodépressif";
+      const ctx = v.contextFree ? `Contexte : ${v.contextFree.trim()}.` : "";
+      const clin = buildClinicalNarrative(v);
+      const care = buildCareNarrative(v);
+      const work = buildWorkNarrative(v);
+
+      return cleanSpaces(`
+Attestation médicale
+
+Je vois en consultation de psychiatrie ${ident} pour ${dx}.
+${ctx}
+
+Sur le plan clinique, ${clin}
+
+La prise en charge consiste en ${care}
+
+${work}
 
 Fait pour servir et valoir ce que de droit.
-— {{today}}`
+— ${todayFR()}
+      `);
+    }
   },
   {
-    id: uid(),
-    name: "Note de consultation — nouveau suivi",
-    category: "Consultation",
-    desc: "Contexte + clinique + plan",
-    ui: { compactTabs:["identite","diag","syndromes","mse","prise","plan"], fullTabs:["identite","contexte","diag","syndromes","mse","prise","plan"] },
-    template:
-`Consultation psychiatrique — {{today}}
+    id:"cl_consult",
+    name:"Note de consultation (nouveau suivi)",
+    build:(v)=> {
+      const ident = v.identite || "la personne";
+      const dx = v.diagnostic || "(à préciser)";
+      const ctx = v.contextFree ? v.contextFree.trim() : "—";
+      const clin = buildClinicalNarrative(v);
+      const care = buildCareNarrative(v);
 
-Contexte : {{context_sentence}}
+      return cleanSpaces(`
+Consultation psychiatrique — ${todayFR()}
 
-Je vois {{identite}} pour {{diagnostic}}.
+Contexte : ${ctx}
 
-Clinique : {{syndrome_sentence}}. {{mse_sentence}}
+Je vois ${ident} pour ${dx}.
 
-Plan : {{plan_sentence}}`
+Sur le plan clinique, ${clin}
+
+Plan : ${care}
+      `);
+    }
   },
   {
-    id: uid(),
-    name: "Note d’évolution intra-hospitalière",
-    category: "Hospitalisation",
-    desc: "Évolution + MSE + plan",
-    ui: { compactTabs:["identite","syndromes","mse","prise","plan"], fullTabs:["identite","contexte","syndromes","mse","prise","plan"] },
-    template:
-`Note d’évolution — {{today}}
+    id:"cl_evol",
+    name:"Note d’évolution (hospitalisation)",
+    build:(v)=> {
+      const evol = v.evolutionFree ? v.evolutionFree.trim() : "—";
+      const clin = buildClinicalNarrative(v);
+      const care = buildCareNarrative(v);
+      return cleanSpaces(`
+Note d’évolution — ${todayFR()}
 
-Évolution : {{evolution_sentence}}
+Évolution : ${evol}
 
-Clinique : {{syndrome_sentence}}. {{mse_sentence}}
+Sur le plan clinique, ${clin}
 
-Prise en charge : {{care_sentence}}
-
-Plan : {{plan_sentence}}`
+Plan : ${care}
+      `);
+    }
   },
   {
-    id: uid(),
-    name: "Sevrage alcool — admission semaine 1",
-    category: "Sevrage alcool",
-    desc: "Admission + plan sevrage + suivi",
-    ui: { compactTabs:["identite","contexte","addicto","mse","schema","plan"], fullTabs:["identite","contexte","addicto","syndromes","mse","schema","plan"] },
-    template:
-`Admission — Sevrage alcool (Semaine 1) — {{today}}
+    id:"cl_sevrage_s1_adm",
+    name:"Sevrage alcool — admission semaine 1",
+    build:(v)=> {
+      const ident = v.identite || "la personne";
+      const ctx = v.contextFree ? v.contextFree.trim() : "—";
+      const mse = buildMSENarrative(v, true);
+      const add = buildAddictoSentence(v);
+      return cleanSpaces(`
+Admission — Sevrage alcool (Semaine 1) — ${todayFR()}
 
-Contexte : {{context_sentence}}
+Patient·e : ${ident}
 
-Consommations : {{addicto_sentence}}
+Contexte : ${ctx}
 
-État mental : {{mse_sentence}}
+Consommations : ${add}
 
-Schéma de sevrage : {{taper_sentence}}
+Examen mental : ${mse}
 
-Plan : {{plan_sentence}}`
+Schéma de sevrage : voir tableau (ou prescription dédiée selon organisation).
+
+Plan : ${buildCareNarrative(v)}
+      `);
+    }
   },
   {
-    id: uid(),
-    name: "Sevrage alcool — sortie semaine 1 (pré-semaine intermédiaire)",
-    category: "Sevrage alcool",
-    desc: "Bilan + semaine intermédiaire",
-    ui: { compactTabs:["identite","evolution","mse","plan"], fullTabs:["identite","contexte","evolution","mse","prise","plan"] },
-    template:
-`Sortie — Sevrage alcool (Fin Semaine 1) — {{today}}
+    id:"cl_sevrage_s1_out",
+    name:"Sevrage alcool — sortie semaine 1",
+    build:(v)=> {
+      const ident = v.identite || "la personne";
+      const evol = v.evolutionFree ? v.evolutionFree.trim() : "—";
+      const mse = buildMSENarrative(v, true);
+      return cleanSpaces(`
+Sortie — Sevrage alcool (Fin semaine 1) — ${todayFR()}
 
-Bilan : {{evolution_sentence}}
+Patient·e : ${ident}
 
-État mental : {{mse_sentence}}
+Bilan : ${evol}
 
-Plan / semaine intermédiaire : {{plan_sentence}}`
+Examen mental : ${mse}
+
+Plan / semaine intermédiaire : ${buildCareNarrative(v)}
+      `);
+    }
   },
   {
-    id: uid(),
-    name: "Sevrage alcool — sortie semaine 2 (fin programme)",
-    category: "Sevrage alcool",
-    desc: "Bilan + suivi + prévention rechute",
-    ui: { compactTabs:["identite","evolution","addicto","mse","plan"], fullTabs:["identite","contexte","evolution","addicto","mse","prise","plan"] },
-    template:
-`Sortie — Sevrage alcool (Fin Semaine 2) — {{today}}
+    id:"cl_sevrage_s2_out",
+    name:"Sevrage alcool — sortie semaine 2",
+    build:(v)=> {
+      const ident = v.identite || "la personne";
+      const evol = v.evolutionFree ? v.evolutionFree.trim() : "—";
+      const mse = buildMSENarrative(v, true);
+      const add = buildAddictoSentence(v);
+      return cleanSpaces(`
+Sortie — Sevrage alcool (Fin semaine 2) — ${todayFR()}
 
-Bilan : {{evolution_sentence}}
+Patient·e : ${ident}
 
-Consommations / prévention : {{addicto_sentence}}
+Bilan : ${evol}
 
-État mental : {{mse_sentence}}
+Consommations / prévention : ${add}
 
-Suivi et plan : {{plan_sentence}}`
-  },
-  {
-    id: uid(),
-    name: "Schéma de sevrage — générateur (documentation)",
-    category: "Sevrage alcool",
-    desc: "Répartition 8h/12h/18h/22h + dégressif",
-    ui: { compactTabs:["identite","schema"], fullTabs:["identite","schema"] },
-    template:
-`Schéma de sevrage (documentation) — {{today}}
+Examen mental : ${mse}
 
-Patient : {{identite}}
-
-Molécule : {{taper_molecule}}
-Dose totale J1 (entrée manuelle) : {{taper_total}}
-Répartition (8h / 12h / 18h / 22h) : {{taper_split}}
-
-Règle de décroissance (à valider par le prescripteur) : {{taper_rule}}
-
-Table (générée) :
-{{taper_table}}`
+Plan : ${buildCareNarrative(v)}
+      `);
+    }
   }
 ];
 
 /* ---------- State ---------- */
-let templates = [];
 let state = {
-  activeId: null,
-  tab: "identite",
+  theme: "dark",
   focus: false,
-  drawer: false,
-  uiMode: "compact", // compact | full
-  valuesByTpl: {} // templateId -> { values }
+  sidebarHidden: false,
+  ui: "compact",          // compact | full
+  mode: "clinical",       // clinical | email | taper
+  activeTplId: "cl_att_work",
+  // values stored per template (and per mode)
+  values: {},
+  // output visible
+  outputVisible: true
 };
 
 /* ---------- Load/Save ---------- */
 function load(){
   const raw = localStorage.getItem(LS_KEY);
-  templates = raw ? JSON.parse(raw) : DEFAULT_TEMPLATES;
-
-  const st = localStorage.getItem(LS_STATE);
-  if(st){
-    try{ state = {...state, ...JSON.parse(st)}; }catch(e){}
+  if(raw){
+    try{ state = {...state, ...JSON.parse(raw)}; }catch(e){}
   }
-  if(!state.activeId || !templates.some(t=>t.id===state.activeId)){
-    state.activeId = templates[0]?.id ?? null;
-  }
-  if(!state.valuesByTpl) state.valuesByTpl = {};
-  save();
+  applyTheme(state.theme);
+  applyFocus(state.focus);
+  applySidebarHidden(state.sidebarHidden);
+  $("mode").value = state.mode;
+  $("civilite").value = getGlobal("civilite","N");
+  $("identite").value = getGlobal("identite","");
+  $("signature").value = getGlobal("signature","");
+  state.activeTplId = ensureActiveTpl(state.mode, state.activeTplId);
+  renderAll();
 }
 function save(){
-  localStorage.setItem(LS_KEY, JSON.stringify(templates));
-  localStorage.setItem(LS_STATE, JSON.stringify(state));
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
 }
-
-/* ---------- Drawer controls ---------- */
-function openDrawer(){
-  state.drawer = true;
-  $("drawerBack").style.display = "block";
-  $("drawer").style.right = "0px";
+function setGlobal(key, val){
+  state.values.__global = state.values.__global || {};
+  state.values.__global[key] = val;
   save();
 }
-function closeDrawer(){
-  state.drawer = false;
-  $("drawerBack").style.display = "none";
-  $("drawer").style.right = "-520px";
-  save();
+function getGlobal(key, fallback=""){
+  return (state.values.__global && state.values.__global[key] !== undefined)
+    ? state.values.__global[key] : fallback;
 }
-
-/* ---------- Active template ---------- */
-function getActive(){
-  return templates.find(t=>t.id===state.activeId) || null;
+function getTplValues(tplId){
+  state.values[tplId] = state.values[tplId] || {};
+  return state.values[tplId];
 }
-function getVals(){
-  const t=getActive();
-  if(!t) return {};
-  if(!state.valuesByTpl[t.id]) state.valuesByTpl[t.id] = {};
-  return state.valuesByTpl[t.id];
-}
-function setVal(key, value){
-  const t=getActive(); if(!t) return;
-  const v=getVals();
-  v[key]=value;
+function setTplValue(tplId, key, val){
+  const v = getTplValues(tplId);
+  v[key]=val;
   save();
 }
 
-/* ---------- UI Tabs ---------- */
-const TAB_DEFS = [
-  {id:"identite", label:"Identité"},
-  {id:"contexte", label:"Contexte"},
-  {id:"diag", label:"Diagnostic"},
-  {id:"syndromes", label:"Syndromes"},
-  {id:"addicto", label:"Conso"},
-  {id:"mse", label:"Examen mental"},
-  {id:"prise", label:"Prise en charge"},
-  {id:"capacite", label:"Travail"},
-  {id:"evolution", label:"Évolution"},
-  {id:"schema", label:"Schéma sevrage"},
-  {id:"plan", label:"Plan / suite"}
-];
-
-function currentTabs(){
-  const t=getActive();
-  if(!t) return TAB_DEFS.map(x=>x.id);
-  const wanted = (state.uiMode==="compact" ? t.ui?.compactTabs : t.ui?.fullTabs) || TAB_DEFS.map(x=>x.id);
-  return wanted;
+/* ---------- Theme / Focus / Sidebar ---------- */
+function applyTheme(t){
+  document.body.setAttribute("data-theme", t);
+  state.theme = t;
+  save();
+}
+function applyFocus(on){
+  document.body.classList.toggle("focus", !!on);
+  state.focus = !!on;
+  save();
+}
+function applySidebarHidden(on){
+  $("sidebar").style.display = on ? "none" : "block";
+  state.sidebarHidden = !!on;
+  save();
 }
 
-function renderTabs(){
-  const tabsEl = $("tabs");
-  tabsEl.innerHTML = "";
-  const allowed = currentTabs();
-
-  allowed.forEach(id=>{
-    const def = TAB_DEFS.find(x=>x.id===id);
-    if(!def) return;
-    const b = document.createElement("div");
-    b.className = "tab"+(state.tab===id ? " active":"");
-    b.textContent = def.label;
-    b.onclick = ()=>{
-      state.tab = id; save(); renderAll();
-    };
-    tabsEl.appendChild(b);
-  });
-
-  const activeDef = TAB_DEFS.find(x=>x.id===state.tab);
-  $("chipTab").textContent = "Onglet : " + (activeDef ? activeDef.label : "—");
+/* ---------- Template handling ---------- */
+function ensureActiveTpl(mode, activeId){
+  const list = mode==="clinical" ? CLIN_TPL
+             : mode==="email" ? EMAIL_TPL
+             : [{id:"taper_main", name:"Schéma sevrage"}];
+  if(list.some(t=>t.id===activeId)) return activeId;
+  return list[0].id;
 }
-
-/* ---------- Render drawer template list ---------- */
-function renderTplList(){
-  const q = ($("searchTpl").value || "").toLowerCase().trim();
-  const list = $("tplList");
-  list.innerHTML = "";
-
-  templates
-    .filter(t=>{
-      const hay = (t.name+" "+t.category+" "+t.desc).toLowerCase();
-      return !q || hay.includes(q);
-    })
-    .forEach(t=>{
-      const div = document.createElement("div");
-      div.className = "item"+(t.id===state.activeId ? " active":"");
-      div.innerHTML = `<b>${escapeHtml(t.name)}</b>
-                       <small>${escapeHtml(t.category || "—")} • ${escapeHtml(t.desc || "")}</small>`;
-      div.onclick = ()=>{
-        state.activeId = t.id;
-        // reset tab if not allowed
-        if(!currentTabs().includes(state.tab)){
-          state.tab = currentTabs()[0] || "identite";
-        }
-        save();
-        renderAll();
-      };
-      list.appendChild(div);
-    });
-}
-
-/* ---------- Blocks builders ---------- */
-function checkboxItem({id,label,sub,onChange,checked}){
-  const wrap=document.createElement("div");
-  wrap.className="opt";
-  const cb=document.createElement("input");
-  cb.type="checkbox";
-  cb.checked=!!checked;
-  cb.onchange=()=> onChange(cb.checked);
-  const t=document.createElement("div");
-  t.className="t";
-  const b=document.createElement("b"); b.textContent=label;
-  t.appendChild(b);
-  if(sub){
-    const s=document.createElement("small"); s.textContent=sub;
-    t.appendChild(s);
+function listTemplates(){
+  const q = ($("searchTpl").value||"").toLowerCase().trim();
+  let list = [];
+  if(state.mode==="clinical"){
+    list = CLIN_TPL.map(t=>({id:t.id, name:t.name, cat:"Clinique"}));
+  } else if(state.mode==="email"){
+    list = EMAIL_TPL.map(t=>({id:t.id, name:t.name, cat:"Email"}));
+  } else {
+    list = [{id:"taper_main", name:"Schéma sevrage", cat:"Sevrage"}];
   }
-  wrap.appendChild(cb); wrap.appendChild(t);
-  return wrap;
-}
-
-function multiSelectLine(domain, selected, onChange){
-  const block=document.createElement("div");
-  block.className="block";
-  const h=document.createElement("h4");
-  h.innerHTML = `${escapeHtml(domain.label)} <span class="muted" style="font-weight:500;">(multi)</span>`;
-  block.appendChild(h);
-
-  const grid=document.createElement("div");
-  grid.className="grid2";
-
-  domain.opts.forEach(opt=>{
-    const id = domain.id+"::"+opt;
-    grid.appendChild(checkboxItem({
-      id,
-      label: opt,
-      checked: selected.includes(opt),
-      onChange:(v)=>{
-        const next = v ? [...new Set([...selected,opt])] : selected.filter(x=>x!==opt);
-        onChange(next);
-      }
-    }));
-  });
-
-  block.appendChild(grid);
-  return block;
-}
-
-/* ---------- Tab renderers ---------- */
-function renderIdentite(container){
-  const v=getVals();
-  container.innerHTML = `
-    <div class="row">
-      <div class="col">
-        <label>Identité (optionnel)</label>
-        <input id="identite" placeholder="Ex. Mme X / M. Y / Initiales" value="${escapeHtml(v.identite||"")}"/>
-      </div>
-      <div class="col">
-        <label>Pronoms / genre (pour accords)</label>
-        <select id="civilite">
-          <option value="F">F (elle)</option>
-          <option value="M">M (il)</option>
-          <option value="N">N (neutre)</option>
-        </select>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col">
-        <label>Cadre</label>
-        <select id="cadre">
-          <option value="consult">Consultation</option>
-          <option value="liaison">Liaison</option>
-          <option value="hosp">Hospitalisation</option>
-          <option value="sevrage">Sevrage alcool</option>
-        </select>
-      </div>
-      <div class="col">
-        <label>Date (auto)</label>
-        <input value="${todayFR()}" disabled/>
-      </div>
-    </div>
-    <div class="block">
-      <h4>Style</h4>
-      <div class="muted" style="font-size:12px;">
-        Ton style “humain propre” : phrases courtes, pas trop soutenu, clinique et lisible.
-      </div>
-    </div>
-  `;
-
-  $("civilite").value = v.civilite || "N";
-  $("cadre").value = v.cadre || "consult";
-
-  $("identite").oninput = (e)=> setVal("identite", e.target.value);
-  $("civilite").onchange = (e)=> setVal("civilite", e.target.value);
-  $("cadre").onchange = (e)=> setVal("cadre", e.target.value);
-}
-
-function renderContexte(container){
-  const v=getVals();
-  container.innerHTML = `
-    <label>Contexte (champ libre court)</label>
-    <textarea id="context" placeholder="Ex. passage urgences, demande clarification, situation familiale…" class="mono">${escapeHtml(v.context||"")}</textarea>
-
-    <div class="block">
-      <h4>Contexte — phrases rapides</h4>
-      <div class="grid2" id="ctxOpts"></div>
-    </div>
-  `;
-
-  const ctxLibrary = [
-    {id:"ctx_urg", label:"Suite passage aux urgences", phrase:"suite à un passage aux urgences pour clarification clinique"},
-    {id:"ctx_new", label:"Nouveau suivi", phrase:"dans le cadre de la mise en place d’un nouveau suivi"},
-    {id:"ctx_stress", label:"Facteurs de stress", phrase:"dans un contexte de facteurs de stress psychosociaux multiples"},
-    {id:"ctx_log", label:"Logement compliqué", phrase:"dans un contexte de vie commune/conditions de logement décrites comme compliquées"},
-    {id:"ctx_work", label:"Enjeu professionnel", phrase:"dans un contexte de retentissement important sur l’activité professionnelle"}
-  ];
-  const selected = v.ctxSel || [];
-  const grid = $("ctxOpts");
-  ctxLibrary.forEach(it=>{
-    grid.appendChild(checkboxItem({
-      id:it.id, label:it.label, sub:it.phrase,
-      checked: selected.includes(it.id),
-      onChange:(ok)=>{
-        const next = ok ? [...new Set([...selected,it.id])] : selected.filter(x=>x!==it.id);
-        setVal("ctxSel", next);
-      }
-    }));
-  });
-
-  $("context").oninput=(e)=> setVal("context", e.target.value);
-}
-
-function renderDiag(container){
-  const v=getVals();
-  const dx = v.diagnostic || "un trouble anxiodépressif";
-  container.innerHTML = `
-    <div class="row">
-      <div class="col">
-        <label>Diagnostic (liste rapide)</label>
-        <select id="dx">
-          <option value="un trouble anxieux">Trouble anxieux</option>
-          <option value="un trouble anxiodépressif">Trouble anxiodépressif</option>
-          <option value="un épisode dépressif">Syndrome/épisode dépressif</option>
-          <option value="un trouble de stress post-traumatique">Syndrome traumatique / PTSD</option>
-          <option value="une dysrégulation émotionnelle / traits borderline">Dysrégulation émotionnelle / traits borderline</option>
-          <option value="un trouble lié à l’usage de substances">Trouble lié à l’usage de substances</option>
-          <option value="(à préciser)">Autre (à préciser)</option>
-        </select>
-      </div>
-      <div class="col">
-        <label>Précision (optionnel)</label>
-        <input id="dxPrec" placeholder="Ex. anxiété au premier plan, comorbidités…" value="${escapeHtml(v.dxPrec||"")}"/>
-      </div>
-    </div>
-  `;
-  $("dx").value = dx;
-  $("dx").onchange=(e)=> setVal("diagnostic", e.target.value);
-  $("dxPrec").oninput=(e)=> setVal("dxPrec", e.target.value);
-}
-
-function renderSyndromes(container){
-  const v=getVals();
-  container.innerHTML = `
-    <div class="row">
-      <div class="col">
-        <label>Pack clinique</label>
-        <select id="pack">
-          <option value="anxieux">Syndrome anxieux</option>
-          <option value="anxiodepressif">Syndrome anxiodépressif</option>
-          <option value="depressif">Syndrome dépressif</option>
-          <option value="traumatique">Syndrome post-traumatique</option>
-          <option value="addictions">Consommations / usage</option>
-        </select>
-      </div>
-      <div class="col">
-        <label>Champ libre (1 phrase max)</label>
-        <input id="synFree" placeholder="Ex. hypersensibilité au bruit, peur d’explosion…" value="${escapeHtml(v.synFree||"")}"/>
-      </div>
-    </div>
-
-    <div class="block">
-      <h4 id="packTitle">—</h4>
-      <div class="grid2" id="packGrid"></div>
-    </div>
-  `;
-
-  const packId = v.pack || "anxiodepressif";
-  $("pack").value = packId;
-
-  function paintPack(){
-    const p = SYNDROME_PACKS[$("pack").value];
-    $("packTitle").textContent = p.title;
-    const sel = v.synSel?.[$("pack").value] || [];
-    const grid = $("packGrid");
-    grid.innerHTML = "";
-    p.items.forEach(it=>{
-      grid.appendChild(checkboxItem({
-        id:it.id,
-        label: it.label,
-        sub: it.phrase,
-        checked: sel.includes(it.id),
-        onChange:(ok)=>{
-          const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
-          const all = v.synSel || {};
-          all[$("pack").value] = next;
-          setVal("synSel", all);
-          // refresh local v reference
-          v.synSel = all;
-        }
-      }));
-    });
+  if(q){
+    list = list.filter(x=> (x.name+" "+x.cat).toLowerCase().includes(q));
   }
-
-  $("pack").onchange = (e)=> { setVal("pack", e.target.value); paintPack(); };
-  $("synFree").oninput = (e)=> setVal("synFree", e.target.value);
-  paintPack();
+  return list;
+}
+function activeTemplate(){
+  if(state.mode==="clinical"){
+    return CLIN_TPL.find(t=>t.id===state.activeTplId) || CLIN_TPL[0];
+  }
+  if(state.mode==="email"){
+    return EMAIL_TPL.find(t=>t.id===state.activeTplId) || EMAIL_TPL[0];
+  }
+  return {id:"taper_main", name:"Schéma sevrage"};
 }
 
-function renderAddicto(container){
-  const v=getVals();
-  container.innerHTML = `
-    <label>Consommations (champ libre court)</label>
-    <textarea id="addFree" class="mono" placeholder="Ex. alcool quotidien, cannabis diminué, sport ressource…">${escapeHtml(v.addFree||"")}</textarea>
-
-    <div class="block">
-      <h4>Cases rapides (usage / évolution)</h4>
-      <div class="grid2" id="addGrid"></div>
-    </div>
-  `;
-
-  const pack = SYNDROME_PACKS.addictions;
-  const sel = v.addSel || [];
-  const grid = $("addGrid");
-  pack.items.forEach(it=>{
-    grid.appendChild(checkboxItem({
-      id:it.id, label:it.label, sub:it.phrase,
-      checked: sel.includes(it.id),
-      onChange:(ok)=>{
-        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
-        setVal("addSel", next);
-      }
-    }));
-  });
-
-  $("addFree").oninput=(e)=> setVal("addFree", e.target.value);
-}
-
-function renderMSE(container){
-  const v=getVals();
-  container.innerHTML = `<div class="muted" style="font-size:12px;">
-    Examen mental systématique : coche plusieurs options par domaine.  
-    Le texte final fera une ligne compacte.
-  </div>`;
-
-  const all = v.mse || {};
-  MSE_DOMAINS.forEach(dom=>{
-    const selected = all[dom.id] || [];
-    const line = multiSelectLine(dom, selected, (next)=>{
-      all[dom.id]=next;
-      setVal("mse", all);
-    });
-    container.appendChild(line);
-  });
-}
-
-function renderPrise(container){
-  const v=getVals();
-  container.innerHTML = `
-    <div class="muted" style="font-size:12px;">
-      Médication = documentation : tu coches et tu complètes le nom/dose si tu veux.  
-      Pas de recommandation automatique.
-    </div>
-
-    <div class="block">
-      <h4>Psychothérapie / cadre</h4>
-      <div class="grid2" id="carePsy"></div>
-    </div>
-
-    <div class="block">
-      <h4>Médication (documentation)</h4>
-      <div id="medArea"></div>
-    </div>
-  `;
-
-  const carePsyLib = [
-    {id:"psy_follow", label:"Suivi régulier", phrase:"un suivi psychiatrique régulier"},
-    {id:"psy_psy", label:"Suivi psychologue", phrase:"un suivi psychothérapeutique en cours"},
-    {id:"psy_group", label:"Groupe psychoéducation", phrase:"une orientation vers un groupe de psychoéducation"},
-    {id:"psy_hdj", label:"Hôpital de jour", phrase:"une prise en charge structurée en hôpital de jour"},
-    {id:"psy_tools", label:"Psychoéducation émotions", phrase:"un travail autour de la régulation émotionnelle et des stratégies d’apaisement"}
-  ];
-  const sel = v.careSel || [];
-  const grid = $("carePsy");
-  carePsyLib.forEach(it=>{
-    grid.appendChild(checkboxItem({
-      id:it.id, label:it.label, sub:it.phrase,
-      checked: sel.includes(it.id),
-      onChange:(ok)=>{
-        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
-        setVal("careSel", next);
-      }
-    }));
-  });
-
-  const medSel = v.medSel || {};
-  const medArea = $("medArea");
-  medArea.innerHTML = "";
-
-  MED_SETS.forEach(m=>{
-    const on = !!medSel[m.id]?.on;
-    const b=document.createElement("div");
-    b.className="block";
-    b.innerHTML = `
-      <h4>${escapeHtml(m.label)} <span class="muted" style="font-weight:500;">(case + nom/dose)</span></h4>
-      <div class="row">
-        <div class="col" style="min-width:220px;">
-          <div class="opt">
-            <input type="checkbox" id="cb_${m.id}" ${on?"checked":""}/>
-            <div class="t">
-              <b>Inclure dans le texte</b>
-              <small>${escapeHtml(m.phrase.replace(/\{\{.*?\}\}/g,"…"))}</small>
-            </div>
-          </div>
-        </div>
-        <div class="col">
-          <label>Nom (optionnel)</label>
-          <input id="nm_${m.id}" placeholder="${m.examples.join(", ")}" value="${escapeHtml(medSel[m.id]?.name||"")}"/>
-        </div>
-        <div class="col">
-          <label>Dose (optionnel)</label>
-          <input id="ds_${m.id}" placeholder="ex. 10 mg/j" value="${escapeHtml(medSel[m.id]?.dose||"")}"/>
-        </div>
-      </div>
-    `;
-    medArea.appendChild(b);
-
-    $("cb_"+m.id).onchange = (e)=>{
-      medSel[m.id] = medSel[m.id] || {};
-      medSel[m.id].on = e.target.checked;
-      setVal("medSel", medSel);
-    };
-    $("nm_"+m.id).oninput = (e)=>{
-      medSel[m.id] = medSel[m.id] || {};
-      medSel[m.id].name = e.target.value;
-      setVal("medSel", medSel);
-    };
-    $("ds_"+m.id).oninput = (e)=>{
-      medSel[m.id] = medSel[m.id] || {};
-      medSel[m.id].dose = e.target.value;
-      setVal("medSel", medSel);
-    };
-  });
-}
-
-function renderCapacite(container){
-  const v=getVals();
-  container.innerHTML = `
-    <div class="row">
-      <div class="col">
-        <label>Capacité de travail</label>
-        <select id="work">
-          <option value="non compatible avec une reprise d’activité professionnelle">Non compatible</option>
-          <option value="partiellement compatible, à discuter (temps partiel/ajustements)">Partiellement compatible</option>
-          <option value="compatible avec une reprise progressive">Compatible (progressif)</option>
-        </select>
-      </div>
-      <div class="col">
-        <label>Justification (cases)</label>
-        <div class="grid2" id="workGrid"></div>
-      </div>
-    </div>
-  `;
-
-  $("work").value = v.work || "non compatible avec une reprise d’activité professionnelle";
-  $("work").onchange = (e)=> setVal("work", e.target.value);
-
-  const lib = [
-    {id:"w_ret", label:"Retentissement fonctionnel", phrase:"retentissement fonctionnel important"},
-    {id:"w_sleep", label:"Sommeil non réparateur", phrase:"sommeil non réparateur"},
-    {id:"w_anx", label:"Anxiété intense", phrase:"anxiété persistante au premier plan"},
-    {id:"w_cogn", label:"Attention/concentration", phrase:"altération attentionnelle et fatigabilité"},
-    {id:"w_social", label:"Isolement/évitement", phrase:"évitement et isolement social"}
-  ];
-  const sel = v.workSel || [];
-  const grid = $("workGrid");
-  lib.forEach(it=>{
-    grid.appendChild(checkboxItem({
-      id:it.id, label:it.label, sub:it.phrase,
-      checked: sel.includes(it.id),
-      onChange:(ok)=>{
-        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
-        setVal("workSel", next);
-      }
-    }));
-  });
-}
-
-function renderEvolution(container){
-  const v=getVals();
-  container.innerHTML = `
-    <div class="row">
-      <div class="col">
-        <label>Évolution globale</label>
-        <select id="evo">
-          <option value="lentement stable">Lentement stable</option>
-          <option value="stable">Stable</option>
-          <option value="instable">Instable</option>
-          <option value="en amélioration">En amélioration</option>
-        </select>
-      </div>
-      <div class="col">
-        <label>Éléments marquants (cases)</label>
-        <div class="grid2" id="evoGrid"></div>
-      </div>
-    </div>
-
-    <label>Champ libre (bilan / semaine / ressenti)</label>
-    <textarea id="evoFree" class="mono" placeholder="Ex. semaine intermédiaire, difficultés, ressources…">${escapeHtml(v.evoFree||"")}</textarea>
-  `;
-  $("evo").value = v.evo || "lentement stable";
-  $("evo").onchange = (e)=> setVal("evo", e.target.value);
-
-  const lib = [
-    {id:"e_hd", label:"Mise en place HDJ", phrase:"mise en place d’une prise en charge structurée (HDJ)"},
-    {id:"e_tools", label:"Démarches actives", phrase:"démarches actives engagées pour stabiliser l’état"},
-    {id:"e_cut", label:"Diminution consommations", phrase:"diminution des consommations avec stratégies alternatives"},
-    {id:"e_sleep", label:"Sommeil mieux/moins bien", phrase:"évolution du sommeil à surveiller"},
-    {id:"e_risk", label:"Sécurité", phrase:"vigilance sur la sécurité (idées noires)"},
-  ];
-  const sel = v.evoSel || [];
-  const grid = $("evoGrid");
-  lib.forEach(it=>{
-    grid.appendChild(checkboxItem({
-      id:it.id, label:it.label, sub:it.phrase,
-      checked: sel.includes(it.id),
-      onChange:(ok)=>{
-        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
-        setVal("evoSel", next);
-      }
-    }));
-  });
-
-  $("evoFree").oninput=(e)=> setVal("evoFree", e.target.value);
-}
-
-function renderSchema(container){
-  const v=getVals();
-  container.innerHTML = `
-    <div class="muted" style="font-size:12px;">
-      Générateur = aide à la mise en forme. Tu entres la dose totale et le nombre de jours, l’app produit un tableau.
-      La règle “dégressif” est paramétrable. Rien n’est prescrit automatiquement.
-    </div>
-
-    <div class="row">
-      <div class="col">
-        <label>Molécule (texte libre)</label>
-        <input id="tapMol" placeholder="Ex. diazépam / lorazépam / autre" value="${escapeHtml(v.taper_molecule||"")}"/>
-      </div>
-      <div class="col">
-        <label>Dose totale J1 (texte libre)</label>
-        <input id="tapTotal" placeholder="Ex. 40 mg/j" value="${escapeHtml(v.taper_total||"")}"/>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col">
-        <label>Répartition J1 (8h / 12h / 18h / 22h)</label>
-        <input id="tapSplit" placeholder="Ex. 10 / 10 / 10 / 10" value="${escapeHtml(v.taper_split||"")}"/>
-      </div>
-      <div class="col">
-        <label>Nombre de jours (table)</label>
-        <input id="tapDays" type="number" min="1" max="21" value="${escapeHtml(v.taper_days||"7")}"/>
-      </div>
-    </div>
-
-    <label>Règle de décroissance (texte)</label>
-    <textarea id="tapRule" class="mono" placeholder="Décrire la logique : égal au départ, puis diminution progressive…">${escapeHtml(v.taper_rule||"Dégressif progressif (à valider cliniquement), avec réduction par paliers sur les prises de la journée.")}</textarea>
-
-    <div class="block">
-      <h4>Table générée (simple)</h4>
-      <button class="btn ok" id="btnGenTable">Générer table</button>
-      <textarea id="tapTable" class="mono" style="min-height:180px;" placeholder="Ici s’affichera la table…">${escapeHtml(v.taper_table||"")}</textarea>
-      <small class="muted">Tu peux éditer la table manuellement après génération.</small>
-    </div>
-  `;
-
-  $("tapMol").oninput=(e)=> setVal("taper_molecule", e.target.value);
-  $("tapTotal").oninput=(e)=> setVal("taper_total", e.target.value);
-  $("tapSplit").oninput=(e)=> setVal("taper_split", e.target.value);
-  $("tapDays").oninput=(e)=> setVal("taper_days", e.target.value);
-  $("tapRule").oninput=(e)=> setVal("taper_rule", e.target.value);
-  $("tapTable").oninput=(e)=> setVal("taper_table", e.target.value);
-
-  $("btnGenTable").onclick=()=>{
-    // Simple generator: repeats structure with placeholders for you to adjust
-    const days = Math.max(1, Math.min(21, parseInt($("tapDays").value||"7",10)));
-    const split = ($("tapSplit").value || "—").trim();
-    let out = "";
-    for(let d=1; d<=days; d++){
-      out += `J${d} : 8h __ / 12h __ / 18h __ / 22h __   (base J1: ${split})\n`;
-    }
-    $("tapTable").value = out.trim();
-    setVal("taper_table", $("tapTable").value);
-  };
-}
-
-function renderPlan(container){
-  const v=getVals();
-  container.innerHTML = `
-    <label>Plan / suite (cases)</label>
-    <div class="block">
-      <h4>Plan rapide</h4>
-      <div class="grid2" id="planGrid"></div>
-    </div>
-
-    <label>Champ libre (suite concrète)</label>
-    <textarea id="planFree" class="mono" placeholder="Ex. revoir date X, HDJ le 16/02, groupe psychoéducation…">${escapeHtml(v.planFree||"")}</textarea>
-  `;
-
-  const lib = [
-    {id:"pl_follow", label:"Suivi rapproché", phrase:"poursuite d’un suivi rapproché avec réévaluation clinique régulière"},
-    {id:"pl_group", label:"Groupe psychoéducation", phrase:"proposition d’intégration dans un groupe de psychoéducation (à rediscuter)"},
-    {id:"pl_hdj", label:"HDJ", phrase:"début de prise en charge en hôpital de jour (selon organisation)"},
-    {id:"pl_safety", label:"Vigilance sécurité", phrase:"vigilance sur la sécurité avec consignes de recours si aggravation"},
-    {id:"pl_social", label:"Ressources / réseau", phrase:"mobilisation des ressources (réseau, hygiène de vie, activité physique)"}
-  ];
-  const sel = v.planSel || [];
-  const grid = $("planGrid");
-  lib.forEach(it=>{
-    grid.appendChild(checkboxItem({
-      id:it.id, label:it.label, sub:it.phrase,
-      checked: sel.includes(it.id),
-      onChange:(ok)=>{
-        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
-        setVal("planSel", next);
-      }
-    }));
-  });
-
-  $("planFree").oninput=(e)=> setVal("planFree", e.target.value);
-}
-
-/* ---------- Sentence builders ---------- */
-function buildContextSentence(v){
-  const lib = {
-    ctx_urg:"suite à un passage aux urgences pour clarification clinique",
-    ctx_new:"dans le cadre de la mise en place d’un nouveau suivi",
-    ctx_stress:"dans un contexte de facteurs de stress psychosociaux multiples",
-    ctx_log:"dans un contexte de vie commune/conditions de logement décrites comme compliquées",
-    ctx_work:"dans un contexte de retentissement important sur l’activité professionnelle"
-  };
-  const picks = (v.ctxSel||[]).map(id=>lib[id]).filter(Boolean);
-  const free = (v.context||"").trim();
-  const all = [...picks];
-  if(free) all.push(free);
-  if(!all.length) return "—";
-  return all.join(", ");
-}
-
+/* ---------- Builders: fluent narrative ---------- */
 function buildSyndromeSentence(v){
   const packId = v.pack || "anxiodepressif";
-  const pack = SYNDROME_PACKS[packId];
-  const sel = v.synSel?.[packId] || [];
-  const phrases = sel.map(id=>{
-    const it = pack.items.find(x=>x.id===id);
-    return it ? it.phrase : null;
-  }).filter(Boolean);
+  const pack = PACKS[packId] || PACKS.anxiodepressif;
+  const sel = v.synSel || [];
+  const phrases = sel
+    .map(id => pack.items.find(x=>x.id===id))
+    .filter(Boolean)
+    .map(it=>it.phrase);
 
   const free = (v.synFree||"").trim();
-  const out = [];
-  if(phrases.length) out.push(phrases.join(", "));
-  if(free) out.push(free);
-  return out.length ? out.join(". ") : "—";
+  const chunk = sentenceJoin(phrases);
+  if(chunk && free) return chunk + ". " + free;
+  if(chunk) return chunk;
+  if(free) return free;
+  return "—";
 }
 
 function buildAddictoSentence(v){
-  const pack = SYNDROME_PACKS.addictions;
   const sel = v.addSel || [];
-  const phrases = sel.map(id=>{
-    const it = pack.items.find(x=>x.id===id);
-    return it ? it.phrase : null;
-  }).filter(Boolean);
+  const phrases = sel
+    .map(id => ADDICTO.items.find(x=>x.id===id))
+    .filter(Boolean)
+    .map(it=>it.phrase);
   const free = (v.addFree||"").trim();
-  const out = [];
-  if(phrases.length) out.push(phrases.join(", "));
-  if(free) out.push(free);
-  return out.length ? out.join(". ") : "—";
+
+  const chunk = sentenceJoin(phrases);
+  if(chunk && free) return chunk + ", " + free;
+  if(chunk) return chunk;
+  if(free) return free;
+  return "non documenté";
 }
 
-function buildMSESentence(v){
-  const mse = v.mse || {};
-  const parts = [];
-
-  // Apparence / contact
-  if (mse.mse_app?.length || mse.mse_contact?.length) {
-    parts.push(
-      "Lors de l’entretien, la personne se présente " +
-      [...(mse.mse_app||[]), ...(mse.mse_contact||[])].join(", ")
-    );
-  }
-
-  // Discours
-  if (mse.mse_speech?.length) {
-    parts.push(
-      "Le discours est " + mse.mse_speech.join(", ")
-    );
-  }
-
-  // Humeur / affects
-  if (mse.mse_mood?.length) {
-    parts.push(
-      "L’humeur apparaît " + mse.mse_mood.join(", ")
-    );
-  }
-
-  // Pensée
-  if (mse.mse_thought?.length) {
-    parts.push(
-      "Sur le plan de la pensée, on note " + mse.mse_thought.join(", ")
-    );
-  }
-
-  // Perceptions
-  if (mse.mse_percep?.length) {
-    const hasHall = mse.mse_percep.some(p => p.includes("hallucination"));
-    parts.push(
-      hasHall
-        ? "Des troubles perceptifs sont rapportés (" + mse.mse_percep.join(", ") + ")"
-        : "Aucun trouble perceptif n’est rapporté"
-    );
-  }
-
-  // Cognition
-  if (mse.mse_cogn?.length) {
-    parts.push(
-      "Sur le plan cognitif, " + mse.mse_cogn.join(", ")
-    );
-  }
-
-  // Insight / jugement
-  if (mse.mse_insight?.length) {
-    parts.push(
-      "L’insight est " + mse.mse_insight.join(", ")
-    );
-  }
-
-  // Sécurité
-  if (mse.mse_risk?.length) {
-    parts.push(
-      "Concernant la sécurité, " + mse.mse_risk.join(", ")
-    );
-  }
-
-  // 🔥 INTÉGRATION DES CONSOMMATIONS DANS L’EXAMEN MENTAL
-  const addParts = [];
-  const addMap = {
-    sub_alc: "un usage d’alcool à visée anxiolytique",
-    sub_can: "un usage de cannabis",
-    sub_coc: "un usage de stimulants",
-    sub_bzd: "un usage de benzodiazépines",
-    sub_red: "une diminution récente des consommations",
-    sub_risk: "un risque de rechute à surveiller"
+function buildMSENarrative(v, includeAddicto){
+  // Produit 2–4 phrases fluides, pas une liste
+  const selectedByDomain = v.mseSel || {}; // {domainId: [itemIds]}
+  const pickPhrase = (domainId)=>{
+    const dom = MSE.find(d=>d.id===domainId);
+    const sel = (selectedByDomain[domainId]||[]);
+    if(!dom || !sel.length) return [];
+    return sel
+      .map(id=>dom.items.find(x=>x.id===id))
+      .filter(Boolean)
+      .map(it=>it.phrase);
   };
-  (v.addSel || []).forEach(id=>{
-    if(addMap[id]) addParts.push(addMap[id]);
-  });
-  if (v.addFree) addParts.push(v.addFree);
 
-  if (addParts.length) {
-    parts.push(
-      "Sur le plan des consommations, la personne rapporte " +
-      addParts.join(", ")
-    );
+  const app = pickPhrase("app");
+  const contact = pickPhrase("contact");
+  const disc = pickPhrase("disc");
+  const mood = pickPhrase("mood");
+  const thought = pickPhrase("thought");
+  const percep = pickPhrase("percep");
+  const cogn = pickPhrase("cogn");
+  const insight = pickPhrase("insight");
+  const risk = pickPhrase("risk");
+
+  const s1 = [];
+  if(app.length || contact.length){
+    s1.push("Lors de l’entretien, la personne se présente");
+    s1.push(sentenceJoin([...app, ...contact]));
+  }
+  const s2 = disc.length ? ("Le " + (disc[0].startsWith("discours")?"": "discours est ") + sentenceJoin(disc).replace(/^discours\s+/,"")) : "";
+  const s3 = mood.length ? ("Sur le plan thymique, " + sentenceJoin(mood)) : "";
+  const s4 = thought.length ? ("Sur le plan de la pensée, " + sentenceJoin(thought)) : "";
+  // perceptions: si "aucun trouble perceptif rapporté" est coché, on formule proprement
+  let s5 = "";
+  if(percep.length){
+    const hasNone = percep.some(p=>p.includes("aucun trouble perceptif"));
+    const hasHall = percep.some(p=>p.includes("troubles perceptifs rapportés"));
+    if(hasNone && !hasHall){
+      s5 = "Aucun trouble perceptif n’est rapporté.";
+    } else {
+      s5 = "Sur le plan perceptif, " + sentenceJoin(percep) + ".";
+    }
   }
 
-  return parts.length
-    ? parts.join(". ") + "."
-    : "L’examen mental n’a pas mis en évidence d’élément psychopathologique majeur ce jour.";
+  const s6 = cogn.length ? ("Sur le plan cognitif, " + sentenceJoin(cogn) + ".") : "";
+  const s7 = insight.length ? ("L’insight est " + sentenceJoin(insight).replace(/^insight\s+/,"") + ".") : "";
+  const s8 = risk.length ? ("Concernant la sécurité, " + sentenceJoin(risk) + ".") : "";
+
+  // consommations intégrées dans le paragraphe MSE
+  let s9 = "";
+  if(includeAddicto){
+    const add = buildAddictoSentence(v);
+    if(add && add !== "non documenté"){
+      s9 = "Sur le plan des consommations, la personne rapporte " + add + ".";
+    }
+  }
+
+  const sentences = [];
+  if(s1.length) sentences.push(s1.join(" ") + ".");
+  if(s2) sentences.push(s2.endsWith(".")?s2:(s2+"."));
+  if(s3) sentences.push(s3.endsWith(".")?s3:(s3+"."));
+  if(s4) sentences.push(s4.endsWith(".")?s4:(s4+"."));
+  if(s5) sentences.push(s5);
+  if(s6) sentences.push(s6);
+  if(s7) sentences.push(s7);
+  if(s8) sentences.push(s8);
+  if(s9) sentences.push(s9);
+
+  // fallback minimal
+  return sentences.length ? sentences.join(" ") : "examen mental sans élément majeur mis en évidence ce jour.";
 }
 
+function buildCareNarrative(v){
+  const sel = v.careSel || [];
+  const phrases = sel
+    .map(id=>CARE.items.find(x=>x.id===id))
+    .filter(Boolean)
+    .map(it=>it.phrase);
 
-function buildCareSentence(v){
-  const careLib = {
-    psy_follow:"un suivi psychiatrique régulier",
-    psy_psy:"un suivi psychothérapeutique en cours",
-    psy_group:"une orientation vers un groupe de psychoéducation",
-    psy_hdj:"une prise en charge structurée en hôpital de jour",
-    psy_tools:"un travail autour de la régulation émotionnelle et des stratégies d’apaisement"
-  };
-  const picks = (v.careSel||[]).map(id=>careLib[id]).filter(Boolean);
+  // médication : champ libre + mini checkboxes
+  const meds = (v.medsFree||"").trim();
+  const base = sentenceJoin(phrases);
+  if(base && meds) return base + ". Une médication est en place : " + meds + ".";
+  if(base) return base + ".";
+  if(meds) return "une médication est en place : " + meds + ".";
+  return "à préciser selon l’évolution et les démarches en cours.";
+}
 
-  // meds
-  const medSel = v.medSel || {};
-  const meds = [];
-  MED_SETS.forEach(m=>{
-    const on = medSel[m.id]?.on;
-    if(!on) return;
-    const name = (medSel[m.id]?.name||"").trim();
-    const dose = (medSel[m.id]?.dose||"").trim();
-    const ctx = {
-      ["med_"+m.id+"_name"]: name || "—",
-      ["med_"+m.id+"_dose"]: dose || "—"
+function buildWorkNarrative(v){
+  const sel = v.workSel || [];
+  // règles simples : si plusieurs cochées -> on prend la plus "forte" wk_no > wk_part > wk_ok
+  const priority = ["wk_no","wk_part","wk_ok"];
+  const chosen = priority.find(id=>sel.includes(id));
+  const it = WORK.items.find(x=>x.id===chosen);
+  return it ? it.phrase : "La capacité de reprise professionnelle sera réévaluée selon l’évolution.";
+}
+
+function buildClinicalNarrative(v){
+  // Clinique = syndrome + MSE + consommations intégrées
+  const synd = buildSyndromeSentence(v);
+  const mse = buildMSENarrative(v, true);
+  // On fabrique un paragraphe fluide “comme tes rapports”
+  const out = paragraphJoin([
+    synd ? (synd.endsWith(".")?synd:(synd+".")) : "",
+    "À l’examen mental, " + mse
+  ]);
+  return cleanSpaces(out);
+}
+
+/* ---------- Render sidebar template list ---------- */
+function renderTplList(){
+  const list = listTemplates();
+  $("countTpl").textContent = `${list.length}`;
+  const tplList = $("tplList");
+  tplList.innerHTML = "";
+  list.forEach(t=>{
+    const div=document.createElement("div");
+    div.className="item"+(t.id===state.activeTplId ? " active":"");
+    div.innerHTML = `<b>${t.name}</b><small>${t.cat}</small>`;
+    div.onclick = ()=>{
+      state.activeTplId = t.id;
+      save();
+      renderAll();
     };
-    // build phrase by replacing placeholders
-    let ph = m.phrase;
-    ph = ph.replace(/\{\{med_ad_name\}\}/g, name||"")
-           .replace(/\{\{med_ad_dose\}\}/g, dose||"")
-           .replace(/\{\{med_ap_name\}\}/g, name||"")
-           .replace(/\{\{med_ap_dose\}\}/g, dose||"")
-           .replace(/\{\{med_anx_name\}\}/g, name||"")
-           .replace(/\{\{med_anx_dose\}\}/g, dose||"")
-           .replace(/\{\{med_sleep_name\}\}/g, name||"")
-           .replace(/\{\{med_sleep_dose\}\}/g, dose||"")
-           .replace(/\{\{med_add_name\}\}/g, name||"")
-           .replace(/\{\{med_add_dose\}\}/g, dose||"");
-    // clean
-    ph = ph.replace(/\s+/g," ").trim();
-    if(ph.endsWith("()")) ph = ph.replace("()","");
-    meds.push(ph);
+    tplList.appendChild(div);
+  });
+}
+
+/* ---------- Render main content per mode ---------- */
+function renderClinical(){
+  const tpl = activeTemplate();
+  const v = getTplValues(tpl.id);
+
+  $("docTitle").textContent = "Clinique";
+  $("chipMode").textContent = "Mode : Clinique";
+  $("chipTpl").textContent = "Modèle : " + tpl.name;
+
+  // Minimal fields
+  const dxOptions = [
+    "un trouble anxieux",
+    "un trouble anxiodépressif",
+    "un épisode dépressif",
+    "un trouble de stress post-traumatique",
+    "une dysrégulation émotionnelle / traits borderline",
+    "un trouble lié à l’usage de substances",
+    "(à préciser)"
+  ];
+
+  const packOptions = [
+    {id:"anxieux", name:"Syndrome anxieux"},
+    {id:"anxiodepressif", name:"Syndrome anxiodépressif"},
+    {id:"depressif", name:"Syndrome dépressif"},
+    {id:"traumatique", name:"Syndrome traumatique"}
+  ];
+
+  const compact = (state.ui==="compact");
+
+  const html = `
+    <div class="row">
+      <div class="col">
+        <label>Diagnostic (rapide)</label>
+        <select id="diagnostic"></select>
+      </div>
+      <div class="col focusHide">
+        <label>Contexte (court)</label>
+        <input id="contextFree" placeholder="passage urgences, facteurs de stress, logement…" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sectionhead">
+        <b>Clinique (cases → phrases)</b>
+        <span class="small">tu coches, ça écrit propre</span>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <label>Pack</label>
+          <select id="pack"></select>
+        </div>
+        <div class="col">
+          <label>Phrase libre (optionnel, 1–2 lignes)</label>
+          <input id="synFree" placeholder="ex. hypersensibilité au bruit, peur que ça explose…" />
+        </div>
+      </div>
+
+      <div class="checkgrid" id="synGrid"></div>
+    </div>
+
+    ${compact ? "" : `
+    <div class="section focusHide">
+      <div class="sectionhead"><b>Consommations</b><span class="small">intégrées dans l’examen mental</span></div>
+      <div class="checkgrid" id="addGrid"></div>
+      <label>Complément libre (optionnel)</label>
+      <input id="addFree" placeholder="ex. consommation diminuée, sport ressource…" />
+    </div>
+    `}
+
+    <div class="section">
+      <div class="sectionhead">
+        <b>Examen mental (fluide)</b>
+        <span class="small">macros + multi-cases</span>
+      </div>
+
+      <div class="row">
+        <button class="btn ok" id="mx_ok">Macro : Standard OK</button>
+        <button class="btn" id="mx_anx">Macro : Anxieux typique</button>
+        <button class="btn warn" id="mx_add">Macro : Addicto typique</button>
+        <button class="btn bad" id="mx_clear">Tout décocher</button>
+      </div>
+
+      <div id="mseArea"></div>
+    </div>
+
+    <div class="section">
+      <div class="sectionhead"><b>Prise en charge</b><span class="small">cases + 1 champ médication</span></div>
+      <div class="checkgrid" id="careGrid"></div>
+      <label>Médication (documentation, libre)</label>
+      <input id="medsFree" placeholder="ex. hydroxyzine si besoin, ISRS…, etc." />
+    </div>
+
+    <div class="section ${compact ? "focusHide":""}">
+      <div class="sectionhead"><b>Travail</b><span class="small">choisir l’idée principale</span></div>
+      <div class="checkgrid" id="workGrid"></div>
+    </div>
+
+    <div class="section ${compact ? "focusHide":""}">
+      <div class="sectionhead"><b>Évolution (libre)</b></div>
+      <textarea id="evolutionFree" class="mono" placeholder="évolution lente stable, démarches, HDJ, etc."></textarea>
+    </div>
+  `;
+
+  $("content").innerHTML = html;
+
+  // Diagnostic select
+  const dxSel = $("diagnostic");
+  dxOptions.forEach(x=>{
+    const o=document.createElement("option");
+    o.value=x; o.textContent=x;
+    dxSel.appendChild(o);
+  });
+  dxSel.value = v.diagnostic || "un trouble anxiodépressif";
+  dxSel.onchange = e => setTplValue(tpl.id,"diagnostic", e.target.value);
+
+  // Contexte
+  if($("contextFree")){
+    $("contextFree").value = v.contextFree || "";
+    $("contextFree").oninput = e => setTplValue(tpl.id,"contextFree", e.target.value);
+  }
+
+  // Pack select
+  const pkSel = $("pack");
+  packOptions.forEach(p=>{
+    const o=document.createElement("option");
+    o.value=p.id; o.textContent=p.name;
+    pkSel.appendChild(o);
+  });
+  pkSel.value = v.pack || "anxiodepressif";
+  pkSel.onchange = e=>{
+    setTplValue(tpl.id,"pack", e.target.value);
+    renderAll(); // refresh checklist
+  };
+
+  // Syn free
+  $("synFree").value = v.synFree || "";
+  $("synFree").oninput = e => setTplValue(tpl.id,"synFree", e.target.value);
+
+  // Syndrome checklist
+  const packId = pkSel.value;
+  const pack = PACKS[packId];
+  const synGrid = $("synGrid");
+  synGrid.innerHTML = "";
+  const synSel = v.synSel || [];
+  pack.items.forEach(it=>{
+    checkboxItem(synGrid, it, synSel.includes(it.id), (ok)=>{
+      const next = ok ? [...new Set([...synSel, it.id])] : synSel.filter(x=>x!==it.id);
+      setTplValue(tpl.id,"synSel", next);
+      $("output").value = generate();
+    });
   });
 
-  const all = [];
-  if(picks.length) all.push(picks.join(", "));
-  if(meds.length) all.push(meds.join(", "));
-  return all.length ? all.join(", ") : "—";
-}
+  // Addictions (only if visible)
+  if($("addGrid")){
+    const addGrid = $("addGrid");
+    addGrid.innerHTML="";
+    const addSel = v.addSel || [];
+    ADDICTO.items.forEach(it=>{
+      checkboxItem(addGrid, it, addSel.includes(it.id), (ok)=>{
+        const next = ok ? [...new Set([...addSel, it.id])] : addSel.filter(x=>x!==it.id);
+        setTplValue(tpl.id,"addSel", next);
+        $("output").value = generate();
+      });
+    });
 
-function buildWorkSentence(v){
-  const base = v.work || "non compatible avec une reprise d’activité professionnelle";
-  const lib = {
-    w_ret:"retentissement fonctionnel important",
-    w_sleep:"sommeil non réparateur",
-    w_anx:"anxiété persistante au premier plan",
-    w_cogn:"altération attentionnelle et fatigabilité",
-    w_social:"évitement et isolement social"
-  };
-  const picks = (v.workSel||[]).map(id=>lib[id]).filter(Boolean);
-  if(!picks.length) return base;
-  return `${base}, compte tenu de ${picks.join(", ")}`;
-}
+    $("addFree").value = v.addFree || "";
+    $("addFree").oninput = e => setTplValue(tpl.id,"addFree", e.target.value);
+  }
 
-function buildEvolutionSentence(v){
-  const base = v.evo || "lentement stable";
-  const lib = {
-    e_hd:"mise en place d’une prise en charge structurée (HDJ)",
-    e_tools:"démarches actives engagées pour stabiliser l’état",
-    e_cut:"diminution des consommations avec stratégies alternatives",
-    e_sleep:"évolution du sommeil à surveiller",
-    e_risk:"vigilance sur la sécurité (idées noires)",
-  };
-  const picks = (v.evoSel||[]).map(id=>lib[id]).filter(Boolean);
-  const free = (v.evoFree||"").trim();
-  const parts = [`évolution ${base}`];
-  if(picks.length) parts.push(picks.join(", "));
-  if(free) parts.push(free);
-  return parts.join(" ; ");
-}
+  // MSE render
+  renderMSEArea(tpl.id);
 
-function buildPlanSentence(v){
-  const lib = {
-    pl_follow:"poursuite d’un suivi rapproché avec réévaluation clinique régulière",
-    pl_group:"proposition d’intégration dans un groupe de psychoéducation (à rediscuter)",
-    pl_hdj:"début de prise en charge en hôpital de jour (selon organisation)",
-    pl_safety:"vigilance sur la sécurité avec consignes de recours si aggravation",
-    pl_social:"mobilisation des ressources (réseau, hygiène de vie, activité physique)"
-  };
-  const picks = (v.planSel||[]).map(id=>lib[id]).filter(Boolean);
-  const free = (v.planFree||"").trim();
-  const all = [];
-  if(picks.length) all.push(picks.join(", "));
-  if(free) all.push(free);
-  return all.length ? all.join(". ") : "—";
-}
-
-/* ---------- Generate document ---------- */
-function generateText(){
-  const t=getActive();
-  if(!t) return "";
-  const v=getVals();
-  const p = pronouns(v.civilite || "N");
-
-  const ctx = {
-    today: todayFR(),
-    p,
-    identite: (v.identite||"la personne").trim() || "la personne",
-    diagnostic: (v.diagnostic||"(à préciser)") + ((v.dxPrec||"").trim()?(" ("+(v.dxPrec||"").trim()+")"):""),
-    context_sentence: buildContextSentence(v),
-    syndrome_sentence: buildSyndromeSentence(v),
-    addicto_sentence: buildAddictoSentence(v),
-    mse_sentence: buildMSESentence(v),
-    care_sentence: buildCareSentence(v),
-    work_sentence: buildWorkSentence(v),
-    evolution_sentence: buildEvolutionSentence(v),
-    plan_sentence: buildPlanSentence(v),
-
-    // sevrage schema fields
-    taper_molecule: (v.taper_molecule||"—").trim() || "—",
-    taper_total: (v.taper_total||"—").trim() || "—",
-    taper_split: (v.taper_split||"—").trim() || "—",
-    taper_rule: (v.taper_rule||"—").trim() || "—",
-    taper_table: (v.taper_table||"").trim() || "—"
-  };
-
-  let out = String(t.template || "");
-
-  // pronouns
-  out = out.replace(/\{\{today\}\}/g, ctx.today);
-  out = out.replace(/\{\{p\.sujet\}\}/g, p.sujet)
-           .replace(/\{\{p\.objet\}\}/g, p.objet)
-           .replace(/\{\{p\.poss\}\}/g, p.poss)
-           .replace(/\{\{p\.poss2\}\}/g, p.poss2)
-           .replace(/\{\{p\.accord\}\}/g, p.accord);
-
-  // fields
-  out = out.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key)=>{
-    const val = ctx[key];
-    return (val===undefined || val===null) ? "" : String(val);
+  // Care grid
+  const careGrid = $("careGrid");
+  const careSel = v.careSel || [];
+  careGrid.innerHTML="";
+  CARE.items.forEach(it=>{
+    checkboxItem(careGrid, it, careSel.includes(it.id), (ok)=>{
+      const next = ok ? [...new Set([...careSel, it.id])] : careSel.filter(x=>x!==it.id);
+      setTplValue(tpl.id,"careSel", next);
+      $("output").value = generate();
+    });
   });
 
-  // clean
-  out = out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-  return out;
+  // Meds free
+  $("medsFree").value = v.medsFree || "";
+  $("medsFree").oninput = e => setTplValue(tpl.id,"medsFree", e.target.value);
+
+  // Work grid
+  if($("workGrid")){
+    const workGrid = $("workGrid");
+    const workSel = v.workSel || [];
+    workGrid.innerHTML="";
+    WORK.items.forEach(it=>{
+      checkboxItem(workGrid, it, workSel.includes(it.id), (ok)=>{
+        // pour éviter contradictions : on garde 1 seul “état” principal
+        let next = workSel.filter(x=>!["wk_no","wk_part","wk_ok"].includes(x));
+        if(ok) next = [...next, it.id];
+        setTplValue(tpl.id,"workSel", next);
+        $("output").value = generate();
+        renderAll(); // refresh to show single selection properly
+      });
+    });
+  }
+
+  // Evolution free
+  if($("evolutionFree")){
+    $("evolutionFree").value = v.evolutionFree || "";
+    $("evolutionFree").oninput = e => setTplValue(tpl.id,"evolutionFree", e.target.value);
+  }
 }
 
-/* ---------- Render tab body ---------- */
-function buildMSESentence(v){
-  const mse = v.mse || {};
-  const parts = [];
+function renderMSEArea(tplId){
+  const v = getTplValues(tplId);
+  const area = $("mseArea");
+  area.innerHTML = "";
 
-  // Apparence / contact
-  if (mse.mse_app?.length || mse.mse_contact?.length) {
-    parts.push(
-      "Lors de l’entretien, la personne se présente " +
-      [...(mse.mse_app||[]), ...(mse.mse_contact||[])].join(", ")
-    );
+  // helper
+  const mseSel = v.mseSel || {}; // {domainId:[itemIds]}
+  function setDomain(domainId, arr){
+    mseSel[domainId] = arr;
+    setTplValue(tplId,"mseSel", mseSel);
   }
 
-  // Discours
-  if (mse.mse_speech?.length) {
-    parts.push(
-      "Le discours est " + mse.mse_speech.join(", ")
-    );
-  }
-
-  // Humeur / affects
-  if (mse.mse_mood?.length) {
-    parts.push(
-      "L’humeur apparaît " + mse.mse_mood.join(", ")
-    );
-  }
-
-  // Pensée
-  if (mse.mse_thought?.length) {
-    parts.push(
-      "Sur le plan de la pensée, on note " + mse.mse_thought.join(", ")
-    );
-  }
-
-  // Perceptions
-  if (mse.mse_percep?.length) {
-    const hasHall = mse.mse_percep.some(p => p.includes("hallucination"));
-    parts.push(
-      hasHall
-        ? "Des troubles perceptifs sont rapportés (" + mse.mse_percep.join(", ") + ")"
-        : "Aucun trouble perceptif n’est rapporté"
-    );
-  }
-
-  // Cognition
-  if (mse.mse_cogn?.length) {
-    parts.push(
-      "Sur le plan cognitif, " + mse.mse_cogn.join(", ")
-    );
-  }
-
-  // Insight / jugement
-  if (mse.mse_insight?.length) {
-    parts.push(
-      "L’insight est " + mse.mse_insight.join(", ")
-    );
-  }
-
-  // Sécurité
-  if (mse.mse_risk?.length) {
-    parts.push(
-      "Concernant la sécurité, " + mse.mse_risk.join(", ")
-    );
-  }
-
-  // 🔥 CONSOMMATIONS INTÉGRÉES À L’EXAMEN MENTAL
-  const addParts = [];
-  const addMap = {
-    sub_alc: "un usage d’alcool à visée anxiolytique",
-    sub_can: "un usage de cannabis",
-    sub_coc: "un usage de stimulants",
-    sub_bzd: "un usage de benzodiazépines",
-    sub_red: "une diminution récente des consommations",
-    sub_risk: "un risque de rechute à surveiller"
+  // macros
+  $("mx_ok").onclick = ()=>{
+    setDomain("app", ["app_ok"]);
+    setDomain("contact", ["ct_ok","ct_coll"]);
+    setDomain("disc", ["ds_coh"]);
+    setDomain("mood", ["md_ok"]);
+    setDomain("thought", []);
+    setDomain("percep", ["pc_none"]);
+    setDomain("cogn", ["cg_ok"]);
+    setDomain("insight", ["in_ok"]);
+    setDomain("risk", ["rk_none"]);
+    $("output").value = generate();
+    renderAll();
+  };
+  $("mx_anx").onclick = ()=>{
+    setDomain("app", ["app_fat"]);
+    setDomain("contact", ["ct_ok","ct_coll"]);
+    setDomain("disc", ["ds_coh"]);
+    setDomain("mood", ["md_anx","md_lab"]);
+    setDomain("thought", ["th_rum"]);
+    setDomain("percep", ["pc_none","pc_hyp"]);
+    setDomain("cogn", ["cg_att","cg_fat"]);
+    setDomain("insight", ["in_ok"]);
+    setDomain("risk", ["rk_diff"]);
+    $("output").value = generate();
+    renderAll();
+  };
+  $("mx_add").onclick = ()=>{
+    setDomain("app", ["app_fat"]);
+    setDomain("contact", ["ct_coll"]);
+    setDomain("disc", ["ds_coh"]);
+    setDomain("mood", ["md_anx","md_irr"]);
+    setDomain("thought", ["th_rum"]);
+    setDomain("percep", ["pc_none"]);
+    setDomain("cogn", ["cg_att"]);
+    setDomain("insight", ["in_part"]);
+    setDomain("risk", ["rk_none"]);
+    // Optionnel: pré-cocher conso
+    const vv = getTplValues(tplId);
+    const addSel = vv.addSel || [];
+    const next = [...new Set([...addSel, "sub_alc", "sub_red"])];
+    setTplValue(tplId,"addSel", next);
+    $("output").value = generate();
+    renderAll();
+  };
+  $("mx_clear").onclick = ()=>{
+    MSE.forEach(d=> setDomain(d.id, []));
+    $("output").value = generate();
+    renderAll();
   };
 
-  (v.addSel || []).forEach(id=>{
-    if(addMap[id]) addParts.push(addMap[id]);
+  // domains
+  MSE.forEach(dom=>{
+    const sec = document.createElement("div");
+    sec.className="section";
+    sec.innerHTML = `<div class="sectionhead"><b>${dom.label}</b><span class="small">(multi)</span></div>`;
+    const grid = document.createElement("div");
+    grid.className="checkgrid";
+
+    const sel = mseSel[dom.id] || [];
+    dom.items.forEach(it=>{
+      checkboxItem(grid, it, sel.includes(it.id), (ok)=>{
+        const next = ok ? [...new Set([...sel, it.id])] : sel.filter(x=>x!==it.id);
+        mseSel[dom.id]=next;
+        setTplValue(tplId,"mseSel", mseSel);
+        $("output").value = generate();
+      });
+    });
+
+    sec.appendChild(grid);
+    area.appendChild(sec);
+  });
+}
+
+function renderEmail(){
+  const tpl = activeTemplate();
+  const v = getTplValues(tpl.id);
+
+  $("docTitle").textContent = "Email";
+  $("chipMode").textContent = "Mode : Email";
+  $("chipTpl").textContent = "Modèle : " + tpl.name;
+
+  const html = `
+    <div class="row">
+      <div class="col">
+        <label>Destinataire (nom)</label>
+        <input id="toName" placeholder="Mme … / M. … / Dr …" />
+      </div>
+      <div class="col">
+        <label>Objet</label>
+        <input id="subject" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sectionhead"><b>Champs du modèle</b><span class="small">rapide</span></div>
+      <div id="emailFields"></div>
+    </div>
+
+    <div class="section">
+      <div class="sectionhead"><b>Notes (optionnel)</b></div>
+      <input id="context" placeholder="ajouter une phrase / précision..." />
+    </div>
+  `;
+  $("content").innerHTML = html;
+
+  // Base fields
+  $("toName").value = v.toName || "";
+  $("subject").value = v.subject || tpl.subject || "";
+  $("context").value = v.context || "";
+
+  $("toName").oninput = e => setTplValue(tpl.id,"toName", e.target.value);
+  $("subject").oninput = e => setTplValue(tpl.id,"subject", e.target.value);
+  $("context").oninput = e => setTplValue(tpl.id,"context", e.target.value);
+
+  const wrap = $("emailFields");
+  wrap.innerHTML = "";
+
+  // model-specific fields
+  const fields = tpl.fields || [];
+  fields.forEach(f=>{
+    const lab = document.createElement("label");
+    lab.textContent = fieldLabel(f);
+    const inp = document.createElement("input");
+    inp.id = f;
+    inp.value = v[f] || "";
+    inp.placeholder = fieldPlaceholder(f);
+    inp.oninput = (e)=> setTplValue(tpl.id, f, e.target.value);
+    wrap.appendChild(lab);
+    wrap.appendChild(inp);
   });
 
-  if (v.addFree) addParts.push(v.addFree);
-
-  if (addParts.length) {
-    parts.push(
-      "Sur le plan des consommations, la personne rapporte " +
-      addParts.join(", ")
-    );
-  }
-
-  return parts.length
-    ? parts.join(". ") + "."
-    : "L’examen mental n’a pas mis en évidence d’élément psychopathologique majeur ce jour.";
+  // default subject if empty
+  if(!$("subject").value) $("subject").value = tpl.subject || "—";
 }
 
-
-  switch(tab){
-    case "identite": return renderIdentite(container);
-    case "contexte": return renderContexte(container);
-    case "diag": return renderDiag(container);
-    case "syndromes": return renderSyndromes(container);
-    case "addicto": return renderAddicto(container);
-    case "mse": return renderMSE(container);
-    case "prise": return renderPrise(container);
-    case "capacite": return renderCapacite(container);
-    case "evolution": return renderEvolution(container);
-    case "schema": return renderSchema(container);
-    case "plan": return renderPlan(container);
-    default: return renderIdentite(container);
-  }
-}
-
-/* ---------- Drawer editor ---------- */
-function renderDrawerEditor(){
-  const t=getActive();
-  if(!t) return;
-  $("editName").value = t.name || "";
-  $("editCategory").value = t.category || "";
-  $("editDesc").value = t.desc || "";
-  $("editTemplate").value = t.template || "";
-
-  $("editName").oninput = (e)=>{ t.name=e.target.value; save(); renderAll(); };
-  $("editCategory").oninput = (e)=>{ t.category=e.target.value; save(); renderTplList(); };
-  $("editDesc").oninput = (e)=>{ t.desc=e.target.value; save(); renderTplList(); };
-  $("editTemplate").oninput = (e)=>{ t.template=e.target.value; save(); };
-}
-
-/* ---------- Actions ---------- */
-function newTemplate(){
-  const t = {
-    id: uid(),
-    name: "Nouveau template",
-    category: "—",
-    desc: "à compléter",
-    ui: { compactTabs:["identite","diag","syndromes","mse","plan"], fullTabs:["identite","contexte","diag","syndromes","mse","prise","plan"] },
-    template: `{{today}}\n\nJe vois {{identite}} pour {{diagnostic}}.\n\nClinique : {{syndrome_sentence}}.\n{{mse_sentence}}\n\nPlan : {{plan_sentence}}`
+function fieldLabel(f){
+  const map = {
+    toName:"Destinataire",
+    context:"Contexte",
+    attachmentName:"Nom du document",
+    oldDate:"Ancienne date",
+    newDate:"Nouvelle date",
+    reason:"Motif",
+    topic:"Sujet",
+    request:"Ce que tu demandes"
   };
-  templates.unshift(t);
-  state.activeId = t.id;
-  state.tab = "identite";
-  save();
-  renderAll();
+  return map[f] || f;
 }
-function duplicateTemplate(){
-  const t=getActive(); if(!t) return;
-  const copy = JSON.parse(JSON.stringify(t));
-  copy.id = uid();
-  copy.name = t.name + " (copie)";
-  templates.unshift(copy);
-  state.activeId = copy.id;
-  save(); renderAll();
+function fieldPlaceholder(f){
+  const map = {
+    attachmentName:"ex. le rapport / l’attestation / la note",
+    oldDate:"ex. 12/02/2026 à 14h",
+    newDate:"ex. 18/02/2026 à 10h",
+    reason:"ex. contrainte d’agenda",
+    topic:"ex. rendez-vous / document",
+    request:"ex. documents / informations nécessaires"
+  };
+  return map[f] || "";
 }
-function deleteTemplate(){
-  const t=getActive(); if(!t) return;
-  if(!confirm("Supprimer ce template ?")) return;
-  templates = templates.filter(x=>x.id!==t.id);
-  delete state.valuesByTpl[t.id];
-  state.activeId = templates[0]?.id ?? null;
-  state.tab = "identite";
-  save(); renderAll();
+
+function renderTaper(){
+  $("docTitle").textContent = "Sevrage";
+  $("chipMode").textContent = "Mode : Schéma sevrage";
+  $("chipTpl").textContent = "Modèle : tableau auto";
+
+  const id = "taper_main";
+  const v = getTplValues(id);
+
+  const html = `
+    <div class="row">
+      <div class="col">
+        <label>Date de début</label>
+        <input type="date" id="taperDate" />
+      </div>
+      <div class="col">
+        <label>Molécule</label>
+        <select id="taperMol">
+          <option value="valium">Valium (diazépam)</option>
+          <option value="temesta">Ténesta (lorazépam)</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Dose de départ</label>
+        <select id="taperStart"></select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sectionhead"><b>J1 — répartition (8h/12h/18h/22h)</b><span class="small">total auto</span></div>
+      <div class="row">
+        <div class="col"><label>8h</label><input id="d8" type="number" step="0.25"/></div>
+        <div class="col"><label>12h</label><input id="d12" type="number" step="0.25"/></div>
+        <div class="col"><label>18h</label><input id="d18" type="number" step="0.25"/></div>
+        <div class="col"><label>22h</label><input id="d22" type="number" step="0.25"/></div>
+        <div class="col"><label>Total J1</label><input id="dTot" disabled/></div>
+      </div>
+      <div class="row">
+        <button class="btn ok" id="btnEven">Répartir égal</button>
+        <button class="btn" id="btnAuto">Générer tableau auto</button>
+      </div>
+      <small class="small">
+        Règle auto: J1–J2 identiques, puis diminution chaque jour jusqu’à la dose cible “10 mg Valium” ou “2.5 mg Ténesta” (prise unique matin).
+      </small>
+    </div>
+
+    <div class="section">
+      <div class="sectionhead"><b>Tableau (modifiable)</b><span class="small">copiable</span></div>
+      <textarea id="taperTable" class="mono" style="min-height:260px;"></textarea>
+    </div>
+  `;
+  $("content").innerHTML = html;
+
+  // init date
+  $("taperDate").value = v.taperDate || todayISO();
+  $("taperMol").value = v.taperMol || "valium";
+
+  // start dose options
+  function fillStart(){
+    const mol = $("taperMol").value;
+    const sel = $("taperStart");
+    sel.innerHTML = "";
+    const opts = (mol==="valium")
+      ? [20,40,50,60]
+      : [8.75,10];
+    opts.forEach(x=>{
+      const o=document.createElement("option");
+      o.value=String(x); o.textContent=String(x);
+      sel.appendChild(o);
+    });
+    sel.value = (v.taperStart !== undefined) ? String(v.taperStart) : String(opts[0]);
+  }
+  fillStart();
+
+  // J1 split
+  $("d8").value = (v.d8 !== undefined) ? v.d8 : "";
+  $("d12").value = (v.d12 !== undefined) ? v.d12 : "";
+  $("d18").value = (v.d18 !== undefined) ? v.d18 : "";
+  $("d22").value = (v.d22 !== undefined) ? v.d22 : "";
+
+  function updateTotal(){
+    const a = parseFloat($("d8").value||"0");
+    const b = parseFloat($("d12").value||"0");
+    const c = parseFloat($("d18").value||"0");
+    const d = parseFloat($("d22").value||"0");
+    const tot = a+b+c+d;
+    $("dTot").value = isFinite(tot) ? tot.toFixed(2).replace(/\.00$/,"") : "";
+    setTplValue(id,"d8", a); setTplValue(id,"d12", b); setTplValue(id,"d18", c); setTplValue(id,"d22", d);
+  }
+  ["d8","d12","d18","d22"].forEach(k=>{
+    $(k).oninput = updateTotal;
+  });
+
+  $("taperDate").onchange = e => setTplValue(id,"taperDate", e.target.value);
+  $("taperMol").onchange = e => {
+    setTplValue(id,"taperMol", e.target.value);
+    fillStart();
+    renderAll(); // refresh view coherent
+  };
+  $("taperStart").onchange = e => setTplValue(id,"taperStart", e.target.value);
+
+  $("btnEven").onclick = ()=>{
+    const mol = $("taperMol").value;
+    const start = parseFloat($("taperStart").value);
+    const per = start/4;
+    $("d8").value = per;
+    $("d12").value = per;
+    $("d18").value = per;
+    $("d22").value = per;
+    updateTotal();
+  };
+
+  $("btnAuto").onclick = ()=>{
+    updateTotal();
+    const startDate = $("taperDate").value;
+    const mol = $("taperMol").value;
+    const start = parseFloat($("taperStart").value);
+
+    // read J1 split (if empty -> equal)
+    let s8 = parseFloat($("d8").value||"0");
+    let s12 = parseFloat($("d12").value||"0");
+    let s18 = parseFloat($("d18").value||"0");
+    let s22 = parseFloat($("d22").value||"0");
+    if((s8+s12+s18+s22)===0){
+      const per = start/4;
+      s8=s12=s18=s22=per;
+      $("d8").value=per; $("d12").value=per; $("d18").value=per; $("d22").value=per;
+      updateTotal();
+    }
+
+    const table = generateTaperTable({
+      startDate,
+      mol,
+      startDose:start,
+      split:{h8:s8,h12:s12,h18:s18,h22:s22}
+    });
+
+    $("taperTable").value = table;
+    setTplValue(id,"taperTable", table);
+  };
+
+  $("taperTable").value = v.taperTable || "";
+  $("taperTable").oninput = e => setTplValue(id,"taperTable", e.target.value);
+
+  updateTotal();
 }
+
+/* ---------- Sevrage generator ---------- */
+function addDaysISO(dateISO, n){
+  const d = new Date(dateISO+"T00:00:00");
+  d.setDate(d.getDate()+n);
+  const pad=x=>String(x).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function fmtFR(dateISO){
+  const [y,m,d]=dateISO.split("-"); return `${d}/${m}/${y}`;
+}
+function generateTaperTable({startDate, mol, startDose, split}){
+  // rules:
+  // - day1-2 same total
+  // - then decrement by step until target
+  //   valium: step 5 mg, target 10 mg (single morning)
+  //   temesta: step 1.25 mg, target 2.5 mg (single morning)
+  // - distribution: by default scale original split proportionally, except last day = morning only target
+  const lines = [];
+  const step = (mol==="valium") ? 5 : 1.25;
+  const target = (mol==="valium") ? 10 : 2.5;
+
+  // proportions from J1 split
+  const tot0 = split.h8+split.h12+split.h18+split.h22;
+  const p8 = tot0 ? split.h8/tot0 : 0.25;
+  const p12 = tot0 ? split.h12/tot0 : 0.25;
+  const p18 = tot0 ? split.h18/tot0 : 0.25;
+  const p22 = tot0 ? split.h22/tot0 : 0.25;
+
+  // build totals array
+  const totals = [];
+  totals.push(startDose);
+  totals.push(startDose);
+
+  let cur = startDose;
+  while(cur > target){
+    cur = Math.max(target, +(cur - step).toFixed(2));
+    totals.push(cur);
+    if(cur===target) break;
+  }
+
+  // force last day = target single morning
+  // (If target already reached earlier, keep last as target anyway)
+  const lastIndex = totals.length-1;
+
+  lines.push(`${mol==="valium" ? "VALIUM (diazépam)" : "TÉNESTA (lorazépam)"} — Début: ${fmtFR(startDate)} — Dose départ: ${startDose} mg`);
+  lines.push(`Règle: J1–J2 identiques, puis décroissance par paliers (${step} mg/j) jusqu’à ${target} mg (prise unique matin).`);
+  lines.push("");
+  lines.push("Jour | Date | 8h | 12h | 18h | 22h | Total");
+  lines.push("-----|------|----|-----|-----|-----|------");
+
+  totals.forEach((t, i)=>{
+    const date = addDaysISO(startDate, i);
+    let d8=0,d12=0,d18=0,d22=0;
+
+    if(i===lastIndex){
+      d8 = target; d12=d18=d22=0;
+    } else {
+      // proportional scaling
+      d8 = +(t*p8).toFixed(2);
+      d12 = +(t*p12).toFixed(2);
+      d18 = +(t*p18).toFixed(2);
+      d22 = +(t*p22).toFixed(2);
+      // small correction to match total
+      const sum = d8+d12+d18+d22;
+      const diff = +(t - sum).toFixed(2);
+      d8 = +(d8 + diff).toFixed(2);
+    }
+
+    const line = `${String(i+1).padStart(2," ")} | ${fmtFR(date)} | ${fmtDose(d8)} | ${fmtDose(d12)} | ${fmtDose(d18)} | ${fmtDose(d22)} | ${fmtDose(d8+d12+d18+d22)}`;
+    lines.push(line);
+  });
+
+  lines.push("");
+  lines.push("Notes : tableau généré pour mise en forme. Adapter selon clinique/prescription locale.");
+  return lines.join("\n");
+}
+function fmtDose(x){
+  // display without trailing .00
+  const s = (Math.round(x*100)/100).toString();
+  return s;
+}
+
+/* ---------- Generate output ---------- */
+function generate(){
+  const tpl = activeTemplate();
+  // enrich v with global fields
+  const g = state.values.__global || {};
+  if(state.mode==="clinical"){
+    const v = getTplValues(tpl.id);
+    v.identite = g.identite || v.identite;
+    v.civilite = g.civilite || v.civilite || "N";
+    return tpl.build(v);
+  }
+  if(state.mode==="email"){
+    const v = getTplValues(tpl.id);
+    v.signature = g.signature || v.signature;
+    // subject stored per tpl, default from template
+    const subj = (v.subject && v.subject.trim()) ? v.subject : tpl.subject;
+    const body = tpl.body(v);
+    return cleanSpaces(`Objet : ${subj}\n\n${body}`);
+  }
+  if(state.mode==="taper"){
+    // output = table
+    const v = getTplValues("taper_main");
+    const txt = v.taperTable || "";
+    return cleanSpaces(txt);
+  }
+  return "";
+}
+
+/* ---------- Export/Import ---------- */
 function exportAll(){
-  const blob = new Blob([JSON.stringify({templates, state}, null, 2)], {type:"application/json"});
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `psy-writer-v02-export-${Date.now()}.json`;
+  a.download = `psywriter-export-${Date.now()}.json`;
   a.click();
-  setTimeout(()=> URL.revokeObjectURL(a.href), 2500);
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2500);
 }
 function importAll(){
   const inp = document.createElement("input");
   inp.type="file";
   inp.accept="application/json";
   inp.onchange = async ()=>{
-    const f=inp.files[0]; if(!f) return;
+    const f = inp.files[0]; if(!f) return;
     const txt = await f.text();
     try{
       const data = JSON.parse(txt);
-      if(Array.isArray(data.templates)) templates = data.templates;
-      if(data.state) state = {...state, ...data.state};
-      if(!templates.length) templates = DEFAULT_TEMPLATES;
-      if(!state.activeId || !templates.some(t=>t.id===state.activeId)){
-        state.activeId = templates[0]?.id ?? null;
-      }
-      if(!state.valuesByTpl) state.valuesByTpl = {};
-      save(); renderAll();
+      state = {...state, ...data};
+      // normalize
+      state.mode = state.mode || "clinical";
+      state.activeTplId = ensureActiveTpl(state.mode, state.activeTplId);
+      applyTheme(state.theme || "dark");
+      applyFocus(!!state.focus);
+      applySidebarHidden(!!state.sidebarHidden);
+      $("mode").value = state.mode;
+      $("outputWrap").style.display = state.outputVisible ? "block" : "none";
+      renderAll();
+      save();
       alert("Import OK.");
     }catch(e){
-      alert("Import invalide : "+e.message);
+      alert("Import invalide : " + e.message);
     }
   };
   inp.click();
 }
 function resetAll(){
-  if(!confirm("Reset complet ? (templates + saisies)")) return;
-  templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
-  state = { activeId: templates[0]?.id ?? null, tab:"identite", focus:false, drawer:false, uiMode:"compact", valuesByTpl:{} };
-  save(); renderAll(); closeDrawer(); setFocus(false);
-}
-function copyOut(){
-  const ta=$("output");
-  ta.select();
-  document.execCommand("copy");
-}
-function clearCurrent(){
-  const t=getActive(); if(!t) return;
-  state.valuesByTpl[t.id] = {};
-  save(); renderAll();
-}
-
-/* ---------- Focus / UI mode ---------- */
-function setFocus(on){
-  state.focus = !!on;
-  document.body.classList.toggle("focus", state.focus);
-  save();
-  renderAll();
+  if(!confirm("Reset complet ?")) return;
+  localStorage.removeItem(LS_KEY);
+  location.reload();
 }
 
 /* ---------- Render all ---------- */
 function renderAll(){
+  // sync global inputs
+  $("civilite").value = getGlobal("civilite","N");
+  $("identite").value = getGlobal("identite","");
+  $("signature").value = getGlobal("signature","");
+
+  // sidebar tpl list
   renderTplList();
-  renderDrawerEditor();
-  renderTabs();
-  renderTabBody();
-  const txt = generateText();
+
+  // content
+  const tpl = activeTemplate();
+  if(state.mode==="clinical") renderClinical();
+  else if(state.mode==="email") renderEmail();
+  else renderTaper();
+
+  // output
+  const txt = generate();
   $("output").value = txt;
+
+  $("chipMode").textContent = "Mode : " + (state.mode==="clinical" ? "Clinique" : state.mode==="email" ? "Email" : "Sevrage");
+  $("chipTpl").textContent = "Modèle : " + (tpl.name || "—");
+
+  // output visible
+  $("outputWrap").style.display = state.outputVisible ? "block" : "none";
 }
 
 /* ---------- Events ---------- */
-$("btnDrawer").onclick = ()=> openDrawer();
-$("btnCloseDrawer").onclick = ()=> closeDrawer();
-$("btnCloseDrawer2").onclick = ()=> closeDrawer();
-$("drawerBack").onclick = ()=> closeDrawer();
-$("searchTpl").oninput = ()=> renderTplList();
-
-$("btnNewTpl").onclick = ()=> newTemplate();
-$("btnDuplicate").onclick = ()=> duplicateTemplate();
-$("btnDeleteTpl").onclick = ()=> deleteTemplate();
-
-$("btnSaveTpl").onclick = ()=>{
-  save();
-  alert("Template enregistré.");
+$("btnTheme").onclick = ()=>{
+  applyTheme(state.theme==="dark" ? "light" : "dark");
 };
 
-$("btnCompact").onclick = ()=>{ state.uiMode="compact"; save(); renderAll(); };
-$("btnFull").onclick = ()=>{ state.uiMode="full"; save(); renderAll(); };
+$("btnFocus").onclick = ()=>{
+  applyFocus(!state.focus);
+};
 
-$("btnGenerate").onclick = ()=>{ $("output").value = generateText(); };
-$("btnGenerate2").onclick = ()=>{ $("output").value = generateText(); };
+$("btnHideSide").onclick = ()=>{
+  applySidebarHidden(true);
+};
+
+document.addEventListener("keydown",(e)=>{
+  // ESC montre sidebar si cachée
+  if(e.key==="Escape" && state.sidebarHidden){
+    applySidebarHidden(false);
+    renderAll();
+  }
+});
+
+$("btnGenerate").onclick = ()=> { $("output").value = generate(); };
+$("btnGenerate2").onclick = ()=> { $("output").value = generate(); };
+
+function copyOut(){
+  $("output").select();
+  document.execCommand("copy");
+}
 $("btnCopy").onclick = copyOut;
 $("btnCopy2").onclick = copyOut;
 
@@ -1803,20 +1747,45 @@ $("btnExport").onclick = exportAll;
 $("btnImport").onclick = importAll;
 $("btnReset").onclick = resetAll;
 
-$("btnFocus").onclick = ()=> setFocus(!state.focus);
-
-$("btnToggleOutput").onclick = ()=>{
-  const w=$("outputWrap");
-  w.style.display = (w.style.display==="none") ? "block" : "none";
+$("btnToggleOut").onclick = ()=>{
+  state.outputVisible = !state.outputVisible;
+  save();
+  renderAll();
 };
-$("btnClearCurrent").onclick = clearCurrent;
+
+$("btnClear").onclick = ()=>{
+  const tpl = activeTemplate();
+  if(state.mode==="taper"){
+    state.values["taper_main"] = {};
+  } else {
+    state.values[tpl.id] = {};
+  }
+  save();
+  renderAll();
+};
+
+$("btnCompact").onclick = ()=>{
+  state.ui = "compact"; save(); renderAll();
+};
+$("btnFull").onclick = ()=>{
+  state.ui = "full"; save(); renderAll();
+};
+
+$("mode").onchange = (e)=>{
+  state.mode = e.target.value;
+  state.activeTplId = ensureActiveTpl(state.mode, state.activeTplId);
+  save();
+  renderAll();
+};
+
+$("searchTpl").oninput = renderTplList;
+
+$("identite").oninput = (e)=>{ setGlobal("identite", e.target.value); renderAll(); };
+$("civilite").onchange = (e)=>{ setGlobal("civilite", e.target.value); renderAll(); };
+$("signature").oninput = (e)=>{ setGlobal("signature", e.target.value); renderAll(); };
 
 /* ---------- Init ---------- */
 load();
-if(!currentTabs().includes(state.tab)) state.tab = currentTabs()[0] || "identite";
-setFocus(!!state.focus);
-if(state.drawer) openDrawer(); else closeDrawer();
-renderAll();
 </script>
 </body>
 </html>
