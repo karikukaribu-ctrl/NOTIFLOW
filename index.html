@@ -1,62 +1,43 @@
-<!-- FILE: index.html
-PSY-WRITER v0.2 — Offline/PWA — Templates de courriers/rapports psychiatriques
-- Mode Consultation / Édition + Focus
-- Anonymisation par défaut
-- Export: Copier + PDF (print) + Export/Import JSON
-- Stockage localStorage uniquement (offline)
-- PWA: manifest + service worker (sw.js)
-
-IMPORTANT:
-- Mets index.html + sw.js + manifest.json dans le même dossier.
-- Le service worker (offline) nécessite un petit serveur local (pas "file://").
-  Ex: python -m http.server 8000  puis http://localhost:8000
--->
 <!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>PSY-WRITER</title>
-
-  <meta name="theme-color" content="#0f1115"/>
-  <link rel="manifest" href="manifest.json"/>
-
+  <title>PSY-WRITER v0.2 — Constructeur clinique</title>
   <style>
     :root{
       --bg:#0f1115; --fg:#e9edf5; --muted:#a8b0bd;
-      --panel: rgba(255,255,255,0.06);
-      --panel2: rgba(255,255,255,0.09);
+      --glass: rgba(255,255,255,0.06);
+      --glass2: rgba(255,255,255,0.10);
+      --line: rgba(255,255,255,0.12);
       --shadow: 0 18px 60px rgba(0,0,0,0.55);
       --r: 18px;
-      --line: rgba(255,255,255,0.10);
+      --ok: rgba(46,229,157,0.55);
+      --warn: rgba(255,207,90,0.55);
+      --bad: rgba(255,107,107,0.55);
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
     @media (prefers-color-scheme: light){
-      :root{
-        --bg:#f7f8fb; --fg:#0d1321; --muted:#4b5563;
-        --panel: rgba(0,0,0,0.04); --panel2: rgba(0,0,0,0.06);
-        --line: rgba(0,0,0,0.10); --shadow: 0 18px 60px rgba(0,0,0,0.12);
-      }
+      :root{ --bg:#f7f8fb; --fg:#0d1321; --muted:#4b5563; --glass: rgba(0,0,0,0.04); --glass2: rgba(0,0,0,0.06); --line: rgba(0,0,0,0.10); --shadow: 0 18px 60px rgba(0,0,0,0.12); }
     }
     *{ box-sizing:border-box; }
     body{
-      margin:0; font-family:var(--sans);
+      margin:0; font-family:var(--sans); color:var(--fg);
       background: radial-gradient(1200px 700px at 15% 0%, rgba(46,229,157,0.10), transparent 55%),
                   radial-gradient(900px 600px at 95% 10%, rgba(255,207,90,0.10), transparent 55%),
                   var(--bg);
-      color:var(--fg);
     }
     header{
-      position:sticky; top:0; z-index:5;
-      backdrop-filter: blur(10px);
-      background: rgba(0,0,0,0.18);
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(12px);
       border-bottom:1px solid var(--line);
+      background: rgba(0,0,0,0.18);
     }
     @media (prefers-color-scheme: light){
-      header{ background: rgba(255,255,255,0.70); }
+      header{ background: rgba(255,255,255,0.72); }
     }
-    .wrap{ max-width:1200px; margin:0 auto; padding:14px 14px 26px; }
+    .wrap{ max-width:1200px; margin:0 auto; padding:12px 12px 22px; }
     .top{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
     }
@@ -66,30 +47,38 @@ IMPORTANT:
     .pillbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .btn{
       border:1px solid var(--line);
-      background: var(--panel);
+      background: var(--glass);
       color:var(--fg);
       padding:9px 12px;
       border-radius: 999px;
       cursor:pointer;
       transition: transform 0.05s ease, background 0.15s ease;
-      font-weight:600;
+      font-weight:650;
+      user-select:none;
     }
-    .btn:hover{ background: var(--panel2); }
+    .btn:hover{ background: var(--glass2); }
     .btn:active{ transform: translateY(1px); }
-    .btn.primary{ border-color: rgba(46,229,157,0.45); }
-    .btn.warn{ border-color: rgba(255,207,90,0.45); }
-    .btn.bad{ border-color: rgba(255,107,107,0.45); }
-    .grid{
+    .btn.ok{ border-color: var(--ok); }
+    .btn.warn{ border-color: var(--warn); }
+    .btn.bad{ border-color: var(--bad); }
+    .btn.ghost{ background: transparent; }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; }
+    .chip{
+      padding:6px 10px; border:1px solid var(--line); border-radius:999px;
+      background: rgba(0,0,0,0.08);
+      font-size:12px; color:var(--muted);
+    }
+    @media (prefers-color-scheme: light){ .chip{ background: rgba(255,255,255,0.55);} }
+
+    /* Layout */
+    .main{
       display:grid;
-      grid-template-columns: 360px 1fr;
+      grid-template-columns: 1fr;
       gap:12px;
       margin-top:12px;
     }
-    @media (max-width: 980px){
-      .grid{ grid-template-columns:1fr; }
-    }
     .card{
-      background: var(--panel);
+      background: var(--glass);
       border:1px solid var(--line);
       border-radius: var(--r);
       box-shadow: var(--shadow);
@@ -102,9 +91,7 @@ IMPORTANT:
       display:flex; justify-content:space-between; align-items:center;
     }
     .card h3 span{ color:var(--muted); font-weight:500; font-size:12px; }
-    .card .body{ padding:12px 14px; }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; }
-    .col{ flex:1 1 220px; min-width:220px; }
+    .body{ padding:12px 14px; }
     label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
     input, select, textarea{
       width:100%;
@@ -117,9 +104,101 @@ IMPORTANT:
       outline:none;
     }
     @media (prefers-color-scheme: light){
-      input, select, textarea{ background: rgba(255,255,255,0.85); }
+      input, select, textarea{ background: rgba(255,255,255,0.88); }
     }
     textarea{ min-height: 90px; resize: vertical; }
+    .mono{ font-family:var(--mono); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .col{ flex:1 1 260px; min-width:260px; }
+    .muted{ color:var(--muted); }
+    .toolbar{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
+      padding:10px 14px; border-top:1px solid var(--line);
+      background: rgba(0,0,0,0.06);
+    }
+    @media (prefers-color-scheme: light){ .toolbar{ background: rgba(255,255,255,0.55);} }
+
+    /* Tabs */
+    .tabs{
+      display:flex; gap:8px; flex-wrap:wrap;
+      padding:10px 14px;
+      border-bottom:1px solid var(--line);
+      background: rgba(0,0,0,0.05);
+    }
+    @media (prefers-color-scheme: light){ .tabs{ background: rgba(255,255,255,0.55);} }
+    .tab{
+      padding:8px 10px;
+      border:1px solid var(--line);
+      border-radius: 999px;
+      cursor:pointer;
+      background: rgba(0,0,0,0.08);
+      color:var(--muted);
+      font-weight:650;
+      user-select:none;
+    }
+    @media (prefers-color-scheme: light){ .tab{ background: rgba(255,255,255,0.65);} }
+    .tab.active{
+      color:var(--fg);
+      border-color: rgba(46,229,157,0.40);
+      outline: 2px solid rgba(46,229,157,0.20);
+    }
+
+    /* Checklist blocks */
+    .block{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      padding:10px 10px;
+      background: rgba(0,0,0,0.08);
+      margin-top:10px;
+    }
+    @media (prefers-color-scheme: light){ .block{ background: rgba(255,255,255,0.65);} }
+    .block h4{
+      margin:0 0 6px;
+      font-size:13px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    @media (max-width:900px){ .grid2{ grid-template-columns:1fr; } }
+    .opt{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:8px 8px;
+      border:1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.06);
+    }
+    @media (prefers-color-scheme: light){ .opt{ background: rgba(255,255,255,0.70);} }
+    .opt input{ width:auto; margin-top:3px; }
+    .opt .t{ flex:1; }
+    .opt .t b{ display:block; font-size:13px; }
+    .opt .t small{ display:block; color:var(--muted); font-size:12px; margin-top:3px; }
+
+    /* Drawer */
+    .drawerBack{
+      position:fixed; inset:0; z-index:20;
+      background: rgba(0,0,0,0.35);
+      display:none;
+    }
+    .drawer{
+      position:fixed; top:0; right:-520px; height:100vh; width:520px;
+      max-width: 92vw;
+      z-index:21;
+      border-left:1px solid var(--line);
+      background: rgba(15,17,21,0.62);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow);
+      transition: right 0.18s ease;
+      display:flex; flex-direction:column;
+    }
+    @media (prefers-color-scheme: light){
+      .drawer{ background: rgba(247,248,251,0.78); }
+    }
+    .drawerHead{
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .drawerHead b{ letter-spacing:0.3px; }
+    .drawerBody{ padding:12px 14px; overflow:auto; }
     .list{ display:flex; flex-direction:column; gap:8px; }
     .item{
       padding:10px 12px;
@@ -135,59 +214,32 @@ IMPORTANT:
     .item.active{ outline:2px solid rgba(46,229,157,0.35); }
     .item b{ font-size:14px; }
     .item small{ color:var(--muted); }
-    .muted{ color:var(--muted); }
-    .mono{ font-family: var(--mono); }
-    .toolbar{
-      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
+    .drawerFoot{
       padding:10px 14px; border-top:1px solid var(--line);
-      background: rgba(0,0,0,0.08);
-    }
-    @media (prefers-color-scheme: light){
-      .toolbar{ background: rgba(255,255,255,0.55); }
-    }
-    .split{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    @media (max-width:980px){ .split{ grid-template-columns:1fr; } }
-    .kpi{
-      display:flex; gap:10px; flex-wrap:wrap;
-      padding:10px 14px; border-bottom:1px solid var(--line);
+      display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
       background: rgba(0,0,0,0.06);
     }
-    .kpi .chip{
-      padding:6px 10px; border:1px solid var(--line); border-radius:999px;
-      background: rgba(0,0,0,0.10);
-      font-size:12px; color:var(--muted);
-    }
-    .hidden{ display:none !important; }
+    @media (prefers-color-scheme: light){ .drawerFoot{ background: rgba(255,255,255,0.55);} }
 
-    /* Focus mode */
-    body.focus header .pillbar .btn:not(.focusKeep){ display:none; }
-    body.focus .grid{ grid-template-columns: 1fr; }
-    body.focus #leftPane{ display:none; }
-    body.focus .split{ grid-template-columns: 1fr; }
-
-    /* Print (PDF) */
-    @media print{
-      header, #leftPane, #editArea, .toolbar, .kpi{ display:none !important; }
-      .grid{ grid-template-columns: 1fr !important; }
-      body{ background:white !important; color:black !important; }
-      textarea{ border:none !important; min-height:auto !important; }
-      .card{ box-shadow:none !important; border:none !important; }
-      .wrap{ max-width:900px; }
-    }
+    /* Focus */
+    body.focus .tabs { display:none; } /* focus = pas d’onglets, on montre juste l’essentiel choisi par template */
+    body.focus .focusHide { display:none !important; }
+    body.focus .btn:not(.focusKeep){ display:none; } /* top bar minimal */
+    body.focus .card h3 span{ display:none; }
   </style>
 </head>
-
 <body>
 <header>
   <div class="wrap top">
     <div class="brand">
-      <b>PSY-WRITER</b>
-      <small>Templates • Saisie rapide • Anonymisé par défaut • Offline (PWA)</small>
+      <b>PSY-WRITER v0.2</b>
+      <small>Cases → phrases • MSE systématique • Templates • Offline localStorage</small>
     </div>
     <div class="pillbar">
       <button class="btn focusKeep" id="btnFocus">Focus</button>
-      <button class="btn" id="btnModeRun">Consultation</button>
-      <button class="btn" id="btnModeEdit">Édition</button>
+      <button class="btn" id="btnDrawer">Templates / Paramètres</button>
+      <button class="btn ok" id="btnGenerate">Générer</button>
+      <button class="btn" id="btnCopy">Copier</button>
       <button class="btn warn" id="btnExport">Exporter</button>
       <button class="btn" id="btnImport">Importer</button>
       <button class="btn bad" id="btnReset">Reset</button>
@@ -196,243 +248,361 @@ IMPORTANT:
 </header>
 
 <div class="wrap">
-  <div class="grid">
-    <div class="card" id="leftPane">
-      <h3>Types de documents <span id="tplCount"></span></h3>
-      <div class="body">
-        <div class="row">
-          <div class="col">
-            <input id="searchTpl" placeholder="Rechercher (attestation, sevrage, liaison…)"/>
-          </div>
-          <div class="col" style="min-width:140px; flex:0 0 140px;">
-            <button class="btn primary" id="btnNewTpl" style="width:100%;">+ Nouveau</button>
-          </div>
-        </div>
-        <div style="height:10px;"></div>
-        <div class="list" id="tplList"></div>
-      </div>
-      <div class="toolbar">
-        <span class="muted" style="margin-right:auto; font-size:12px;">Stockage : localStorage</span>
-        <button class="btn" id="btnDuplicate">Dupliquer</button>
-        <button class="btn bad" id="btnDelete">Supprimer</button>
-      </div>
-    </div>
+  <div class="chips">
+    <span class="chip" id="chipDoc">Document : —</span>
+    <span class="chip" id="chipTab">Onglet : —</span>
+    <span class="chip" id="chipAutosave">Auto-save : ON</span>
+  </div>
 
+  <div class="main">
     <div class="card">
-      <div class="kpi">
-        <span class="chip" id="modeChip">Mode : Consultation</span>
-        <span class="chip" id="activeChip">Document : —</span>
-        <span class="chip" id="autosaveChip">Auto-save : ON</span>
-        <span class="chip" id="pwaChip">PWA : —</span>
+      <div class="tabs focusHide" id="tabs"></div>
+
+      <div class="body" id="tabBody"></div>
+
+      <div class="toolbar">
+        <span class="muted" style="margin-right:auto; font-size:12px;">Astuce : tu peux tout faire en cases + 2 champs libres.</span>
+        <button class="btn" id="btnToggleOutput">Afficher/Masquer sortie</button>
       </div>
 
-      <div class="body">
-        <div class="split">
-          <div class="card" style="box-shadow:none;">
-            <h3 id="paneTitle">Saisie</h3>
-            <div class="body" id="formArea"></div>
-          </div>
+      <div class="body" id="outputWrap">
+        <label>Texte final (modifiable)</label>
+        <textarea id="output" class="mono" style="min-height:280px;"></textarea>
+      </div>
 
-          <div class="card" style="box-shadow:none;">
-            <h3>Résultat final <span class="muted">copier / PDF</span></h3>
-            <div class="body">
-              <textarea id="output" class="mono" style="min-height:340px;"></textarea>
-            </div>
-            <div class="toolbar">
-              <button class="btn primary" id="btnGenerate">Générer</button>
-              <button class="btn" id="btnCopy">Copier</button>
-              <button class="btn" id="btnPDF">PDF</button>
-              <button class="btn" id="btnClearForm">Effacer saisie</button>
-            </div>
-          </div>
-        </div>
-
-        <div id="editArea" class="hidden" style="margin-top:12px;">
-          <div class="card" style="box-shadow:none;">
-            <h3>Édition du template <span class="muted">questions + texte modèle</span></h3>
-            <div class="body">
-              <div class="row">
-                <div class="col">
-                  <label>Nom du template</label>
-                  <input id="editName" placeholder="Ex. Attestation suivi anxiodépressif"/>
-                </div>
-                <div class="col">
-                  <label>Catégorie</label>
-                  <input id="editCategory" placeholder="Ex. Travail / Mutuelle / Sevrage / Liaison"/>
-                </div>
-              </div>
-
-              <label>Description courte</label>
-              <input id="editDesc" placeholder="Ce qui s’affiche dans la liste"/>
-
-              <label>Champs (JSON simplifié)</label>
-              <textarea id="editFields" class="mono" spellcheck="false"></textarea>
-              <small class="muted">
-                Types : text, textarea, select, date, checkbox, number.  
-                Exemple : {"id":"motif","label":"Motif","type":"textarea"}  
-              </small>
-
-              <label>Texte modèle (placeholders)</label>
-              <textarea id="editTemplate" class="mono" spellcheck="false" style="min-height:220px;"></textarea>
-              <small class="muted">
-                Placeholders : {{fieldId}} • Pronoms : {{p.patient}} {{p.sujet}} {{p.objet}} {{p.poss}} • Date : {{today}}
-              </small>
-            </div>
-            <div class="toolbar">
-              <button class="btn primary" id="btnSaveTpl">Enregistrer template</button>
-              <button class="btn" id="btnValidateTpl">Valider</button>
-            </div>
-          </div>
-        </div>
-
+      <div class="toolbar">
+        <button class="btn ok" id="btnGenerate2">Générer</button>
+        <button class="btn" id="btnCopy2">Copier</button>
+        <button class="btn" id="btnClearCurrent">Effacer saisie (ce document)</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Drawer -->
+<div class="drawerBack" id="drawerBack"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawerHead">
+    <div>
+      <b>Templates & Paramètres</b>
+      <div class="muted" style="font-size:12px; margin-top:2px;">Masque tout et travaille propre.</div>
+    </div>
+    <button class="btn" id="btnCloseDrawer">Fermer</button>
+  </div>
+  <div class="drawerBody">
+    <label>Rechercher</label>
+    <input id="searchTpl" placeholder="suivi, travail, sevrage, liaison…"/>
+
+    <div class="row">
+      <div class="col" style="min-width:180px;">
+        <button class="btn ok" id="btnNewTpl" style="width:100%;">+ Nouveau template</button>
+      </div>
+      <div class="col" style="min-width:180px;">
+        <button class="btn" id="btnDuplicate" style="width:100%;">Dupliquer</button>
+      </div>
+    </div>
+
+    <div style="height:8px;"></div>
+    <div class="list" id="tplList"></div>
+
+    <div class="block">
+      <h4>Édition rapide (optionnel)</h4>
+      <label>Nom</label>
+      <input id="editName"/>
+      <label>Catégorie</label>
+      <input id="editCategory"/>
+      <label>Description</label>
+      <input id="editDesc"/>
+
+      <label>Texte modèle (placeholders)</label>
+      <textarea id="editTemplate" class="mono" style="min-height:160px;" spellcheck="false"></textarea>
+      <small class="muted">
+        Placeholders : {{today}} • {{p.sujet}} {{p.objet}} {{p.poss}} • {{identite}} • {{diagnostic}} • etc.
+      </small>
+
+      <div class="row">
+        <div class="col">
+          <button class="btn ok" id="btnSaveTpl" style="width:100%;">Enregistrer template</button>
+        </div>
+        <div class="col">
+          <button class="btn bad" id="btnDeleteTpl" style="width:100%;">Supprimer</button>
+        </div>
+      </div>
+
+      <label style="margin-top:12px;">Mode visibilité</label>
+      <div class="row">
+        <div class="col" style="min-width:180px;">
+          <button class="btn" id="btnCompact">UI compacte</button>
+        </div>
+        <div class="col" style="min-width:180px;">
+          <button class="btn" id="btnFull">UI complète</button>
+        </div>
+      </div>
+      <small class="muted">Compact = moins d’onglets visibles (tu choisis ton strict nécessaire).</small>
+    </div>
+  </div>
+
+  <div class="drawerFoot">
+    <button class="btn" id="btnCloseDrawer2">Fermer</button>
+  </div>
+</aside>
+
 <script>
-/* ===========================
-   PSY-WRITER v0.2 (offline/PWA)
-   - Templates + édition
-   - Mode anonymisé par défaut
-   - Export PDF via print
-   =========================== */
+/* =========================================================
+   PSY-WRITER v0.2 — Cases -> phrases + MSE + templates
+   Offline • localStorage • export/import JSON
+   ========================================================= */
 
-const LS_KEY = "psy_writer_templates_v02";
-const LS_STATE = "psy_writer_state_v02";
+const LS_KEY = "psy_writer_v02_templates";
+const LS_STATE = "psy_writer_v02_state";
 
-function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
-function todayFR(){
-  const d = new Date();
-  const pad = (n)=> String(n).padStart(2,"0");
+/* ---------- Utils ---------- */
+const $ = (id)=> document.getElementById(id);
+const uid = ()=> Math.random().toString(16).slice(2) + Date.now().toString(16);
+const todayFR = ()=>{
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,"0");
   return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
-}
-
+};
 function pronouns(set){
-  // set: "F" | "M" | "N"
-  if(set==="F") return {patient:"la patiente", sujet:"elle", objet:"la", poss:"sa", accord:"e"};
-  if(set==="M") return {patient:"le patient", sujet:"il", objet:"le", poss:"son", accord:""};
-  return {patient:"la personne", sujet:"la personne", objet:"la personne", poss:"son", accord:"e"};
+  if(set==="F") return {sujet:"elle", objet:"la", poss:"sa", poss2:"son", accord:"e"};
+  if(set==="M") return {sujet:"il", objet:"le", poss:"sa", poss2:"son", accord:""};
+  return {sujet:"la personne", objet:"la personne", poss:"son", poss2:"son", accord:"e"};
+}
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
 }
 
+/* ---------- “Packs” syndromes : cases -> phrases ---------- */
+const SYNDROME_PACKS = {
+  anxieux: {
+    title: "Syndrome anxieux",
+    items: [
+      {id:"anx_tension", label:"Tension interne / agitation", phrase:"tension interne marquée, difficulté à relâcher le contrôle"},
+      {id:"anx_rumi", label:"Ruminations / pensées envahissantes", phrase:"pensées envahissantes et ruminations anxieuses"},
+      {id:"anx_panic", label:"Crises d’angoisse", phrase:"crises d’angoisse paroxystiques"},
+      {id:"anx_social", label:"Anxiété sociale", phrase:"anxiété sociale importante avec évitement"},
+      {id:"anx_hyperv", label:"Hypervigilance", phrase:"hypervigilance et sentiment d’insécurité"},
+      {id:"anx_sleep", label:"Troubles du sommeil", phrase:"troubles du sommeil (endormissement difficile, sommeil non réparateur)"},
+      {id:"anx_soma", label:"Somatisation", phrase:"retentissement somatique (tensions, palpitations, oppression)"},
+      {id:"anx_function", label:"Retentissement", phrase:"retentissement fonctionnel significatif sur le quotidien"}
+    ]
+  },
+  anxiodepressif: {
+    title: "Syndrome anxiodépressif",
+    items: [
+      {id:"ad_anx", label:"Anxiété au premier plan", phrase:"anxiété au premier plan, avec ruminations et hypervigilance"},
+      {id:"ad_down", label:"Affects dépressifs", phrase:"affects dépressifs avec baisse de l’élan et perte de plaisir"},
+      {id:"ad_fatigue", label:"Fatigabilité", phrase:"fatigabilité importante et épuisement"},
+      {id:"ad_conc", label:"Attention / concentration", phrase:"difficultés d’attention et de concentration"},
+      {id:"ad_sleep", label:"Sommeil", phrase:"troubles du sommeil (insomnie et/ou sommeil non réparateur)"},
+      {id:"ad_app", label:"Appétit", phrase:"altération de l’appétit"},
+      {id:"ad_ideo", label:"Idées noires diffuses", phrase:"idées noires diffuses, sans planification rapportée"},
+      {id:"ad_function", label:"Retentissement", phrase:"retentissement fonctionnel majeur"}
+    ]
+  },
+  depressif: {
+    title: "Syndrome dépressif",
+    items: [
+      {id:"dep_trist", label:"Tristesse / abattement", phrase:"abattement thymique avec tristesse persistante"},
+      {id:"dep_anhed", label:"Anhédonie", phrase:"anhédonie et perte d’intérêt"},
+      {id:"dep_vital", label:"Baisse élan vital", phrase:"baisse de l’élan vital"},
+      {id:"dep_sleep", label:"Sommeil", phrase:"troubles du sommeil"},
+      {id:"dep_app", label:"Appétit", phrase:"modification de l’appétit"},
+      {id:"dep_guilt", label:"Auto-dévalorisation", phrase:"auto-dévalorisation et sentiment de culpabilité"},
+      {id:"dep_psycho", label:"Ralentissement", phrase:"ralentissement psychomoteur ou majoration de la fatigabilité"},
+      {id:"dep_ideo", label:"Idées suicidaires", phrase:"idées suicidaires (à préciser au plan clinique)"}
+    ]
+  },
+  traumatique: {
+    title: "Syndrome post-traumatique",
+    items: [
+      {id:"ptsd_reexp", label:"Réexpériences", phrase:"réexpériences intrusives (images, cauchemars)"},
+      {id:"ptsd_avoid", label:"Évitement", phrase:"évitement des déclencheurs et restriction des activités"},
+      {id:"ptsd_hyper", label:"Hyperactivation", phrase:"hyperactivation neurovégétative (hypervigilance, sursaut)"},
+      {id:"ptsd_sleep", label:"Sommeil", phrase:"troubles du sommeil marqués"},
+      {id:"ptsd_cogn", label:"Altérations cognitives", phrase:"ruminations centrées sur la sécurité et le contrôle"},
+      {id:"ptsd_mood", label:"Affects", phrase:"irritabilité, anxiété, affects dépressifs associés"},
+      {id:"ptsd_diss", label:"Dissociation (si présent)", phrase:"éléments dissociatifs rapportés"},
+      {id:"ptsd_function", label:"Retentissement", phrase:"retentissement fonctionnel significatif"}
+    ]
+  },
+  addictions: {
+    title: "Consommations / usage",
+    items: [
+      {id:"sub_alc", label:"Alcool", phrase:"usage d’alcool à visée anxiolytique / régulatrice"},
+      {id:"sub_can", label:"Cannabis", phrase:"usage de cannabis, avec retentissement sur l’humeur et la motivation"},
+      {id:"sub_coc", label:"Stimulants", phrase:"usage de stimulants / cocaïne rapporté"},
+      {id:"sub_bzd", label:"Benzodiazépines", phrase:"usage de benzodiazépines (prescrites ou non), à préciser"},
+      {id:"sub_red", label:"Diminution récente", phrase:"diminution récente des consommations, avec mise en place de stratégies alternatives"},
+      {id:"sub_risk", label:"Risque", phrase:"risque de rechute à surveiller, avec travail de réduction des risques"}
+    ]
+  }
+};
+
+/* ---------- MSE (examen mental) systématique ---------- */
+const MSE_DOMAINS = [
+  {id:"mse_app", label:"Apparence / présentation", opts:["soignée","négligée","fatiguée","adaptée","agitation visible"]},
+  {id:"mse_contact", label:"Contact / alliance", opts:["bon contact","méfiant·e","repli","collaborant·e","difficile à mobiliser"]},
+  {id:"mse_speech", label:"Discours", opts:["cohérent","logorrhéique","ralenti","pauvre","tangentiellement","difficile à interrompre"]},
+  {id:"mse_mood", label:"Humeur / affects", opts:["anxieux·se","dépressif·ve","labilité émotionnelle","irritable","euthymique","émoussement affectif"]},
+  {id:"mse_thought", label:"Pensée", opts:["ruminations","idées noires","idées délirantes (à préciser)","idées de référence","pensées envahissantes","obsessions"]},
+  {id:"mse_percep", label:"Perceptions", opts:["pas d’hallucinations rapportées","hallucinations auditives (à préciser)","hallucinations visuelles (à préciser)","hyperacousie / hypersensibilité"]},
+  {id:"mse_cogn", label:"Cognition", opts:["attention fluctuante","concentration difficile","orientation OK","mémoire OK","fatigabilité cognitive"]},
+  {id:"mse_insight", label:"Insight / jugement", opts:["insight présent","insight partiel","altération du jugement","capacité critique préservée"]},
+  {id:"mse_risk", label:"Sécurité", opts:["pas d’idéation suicidaire active","idées noires diffuses","idéation suicidaire (à préciser)","pas de plan","plan/intentionalité (à préciser)"]}
+];
+
+/* ---------- Médication (documentation) ---------- */
+const MED_SETS = [
+  {id:"med_ad", label:"Antidépresseur", examples:["escitalopram","sertraline","fluoxétine","venlafaxine","mirtazapine"], phrase:"un traitement antidépresseur ({{med_ad_name}} {{med_ad_dose}})"},
+  {id:"med_ap", label:"Antipsychotique", examples:["olanzapine","quetiapine","aripiprazole","rispéridone"], phrase:"un traitement antipsychotique ({{med_ap_name}} {{med_ap_dose}})"},
+  {id:"med_anx", label:"Anxiolytique / hydroxyzine", examples:["hydroxyzine"], phrase:"un traitement symptomatique anxiolytique ({{med_anx_name}} {{med_anx_dose}})"},
+  {id:"med_sleep", label:"Sommeil", examples:["trazodone","mélatonine"], phrase:"un traitement ciblant le sommeil ({{med_sleep_name}} {{med_sleep_dose}})"},
+  {id:"med_add", label:"Addictologie", examples:["acamprosate","naltrexone","baclofène"], phrase:"un traitement de soutien en addictologie ({{med_add_name}} {{med_add_dose}})"}
+];
+
+/* ---------- Templates (doc types) ---------- */
 const DEFAULT_TEMPLATES = [
   {
     id: uid(),
-    name: "Attestation suivi anxiodépressif (anxiété à l’avant-plan)",
+    name: "Rapport / attestation — arrêt de travail (anxiété à l’avant-plan)",
     category: "Travail / Médecin-conseil",
-    desc: "Arrêt maintenu + hôpital de jour + suivi régulier",
-    fields: [
-      {id:"civilite", label:"Genre (pronoms)", type:"select", options:["F","M","N"], hint:"F=elle • M=il • N=neutre"},
-      {id:"anonyme", label:"Anonymiser (par défaut)", type:"checkbox", hint:"ON = pas d’identité nominative dans le texte"},
-      {id:"identite", label:"Identité (optionnel)", type:"text", hint:"Ex. Mme X / M. Y / Initiales"},
-      {id:"evo", label:"Évolution", type:"select", options:["lentement stable","stable","instable"], hint:""},
-      {id:"aptitude", label:"Compatibilité reprise travail", type:"select", options:["non compatible","partiellement compatible","compatible"], hint:""},
-      {id:"sympt", label:"Symptomatologie (facts)", type:"textarea", hint:"anxiété sociale, isolement, ruminations, sommeil…"},
-      {id:"demarches", label:"Démarches/ressources entreprises", type:"textarea", hint:"hôpital de jour, hygiène de vie, thérapeutique…"},
-      {id:"hdj_date", label:"Début hôpital de jour", type:"date", hint:""},
-      {id:"meds", label:"Médication en place (formulation prudente)", type:"textarea", hint:"Ex. médication psychotrope en place, réévaluée régulièrement"},
-      {id:"suivi", label:"Fréquence de suivi", type:"select", options:["régulier","rapproché","ponctuel"], hint:""},
-      {id:"notes", label:"Notes additionnelles (optionnel)", type:"textarea", hint:"réévaluation, sécurité…"}
-    ],
+    desc: "Suivi régulier • évolution lente • HDJ possible",
+    ui: { compactTabs:["identite","diag","syndromes","mse","prise","capacite","plan"], fullTabs:["identite","contexte","diag","syndromes","mse","prise","capacite","plan"] },
     template:
 `Attestation médicale
 
-Je soussigné·e certifie que {{identite}} est suivi{{p.accord}} régulièrement en consultation de psychiatrie pour un trouble anxiodépressif.
+Je vois en consultation de psychiatrie {{identite}} pour {{diagnostic}}.
 
-L’évolution clinique est {{evo}}. À ce stade, l’état clinique actuel reste {{aptitude}} avec une reprise d’activité professionnelle.
+Sur le plan clinique, {{syndrome_sentence}}. {{mse_sentence}}
 
-Sur le plan symptomatique, l’anxiété est à l’avant-plan : {{sympt}}.
+La prise en charge consiste en {{care_sentence}}. {{plan_sentence}}
 
-{{p.patient}} a entrepris plusieurs démarches visant à stabiliser son état : {{demarches}}. Une prise en charge en hôpital de jour débutera le {{hdj_date}}, démarche travaillée en consultation et porteuse d’un soutien thérapeutique structurant.
-
-Une médication est actuellement en place : {{meds}}. Le suivi psychiatrique se poursuit de façon {{suivi}}, avec réévaluation clinique régulière.
-
-{{notes}}
+À ce stade, l’état clinique actuel est {{work_sentence}}.
 
 Fait pour servir et valoir ce que de droit.
 — {{today}}`
   },
   {
     id: uid(),
-    name: "Note de consultation — nouveau suivi (générique)",
+    name: "Note de consultation — nouveau suivi",
     category: "Consultation",
-    desc: "Contexte • clinique • sécurité • plan",
-    fields: [
-      {id:"civilite", label:"Genre (pronoms)", type:"select", options:["F","M","N"]},
-      {id:"anonyme", label:"Anonymiser (par défaut)", type:"checkbox"},
-      {id:"identite", label:"Identité (optionnel)", type:"text"},
-      {id:"contexte", label:"Contexte / motif", type:"textarea"},
-      {id:"bio", label:"Éléments biographiques pertinents", type:"textarea"},
-      {id:"sympt", label:"Symptômes à l’avant-plan", type:"textarea"},
-      {id:"secu", label:"Sécurité (idées noires etc.)", type:"textarea"},
-      {id:"ttt", label:"Traitement / mesures", type:"textarea"},
-      {id:"plan", label:"Plan / suivi", type:"textarea"}
-    ],
+    desc: "Contexte + clinique + plan",
+    ui: { compactTabs:["identite","diag","syndromes","mse","prise","plan"], fullTabs:["identite","contexte","diag","syndromes","mse","prise","plan"] },
     template:
 `Consultation psychiatrique — {{today}}
 
-{{identite}}. Consultation réalisée dans le cadre d’un nouveau suivi.
+Contexte : {{context_sentence}}
 
-Contexte : {{contexte}}.
+Je vois {{identite}} pour {{diagnostic}}.
 
-Éléments de parcours : {{bio}}.
+Clinique : {{syndrome_sentence}}. {{mse_sentence}}
 
-Clinique : {{sympt}}.
-
-Sécurité : {{secu}}.
-
-Traitement / mesures : {{ttt}}.
-
-Plan : {{plan}}.`
+Plan : {{plan_sentence}}`
   },
   {
     id: uid(),
-    name: "Note — projet psychoéducation BPD (évaluation)",
-    category: "Consultation",
-    desc: "Évaluation conjointe + hypothèse BPD + plan",
-    fields: [
-      {id:"civilite", label:"Genre (pronoms)", type:"select", options:["F","M","N"]},
-      {id:"anonyme", label:"Anonymiser (par défaut)", type:"checkbox"},
-      {id:"identite", label:"Identité (optionnel)", type:"text"},
-      {id:"contexte", label:"Contexte", type:"textarea"},
-      {id:"elements", label:"Éléments à l’avant-plan", type:"textarea"},
-      {id:"histoire", label:"Parcours / antécédents thérapeutiques", type:"textarea"},
-      {id:"clinique", label:"Clinique actuelle", type:"textarea"},
-      {id:"substances", label:"Consommations / impulsivité", type:"textarea"},
-      {id:"ressources", label:"Ressources / changements récents", type:"textarea"},
-      {id:"plan", label:"Plan", type:"textarea"}
-    ],
+    name: "Note d’évolution intra-hospitalière",
+    category: "Hospitalisation",
+    desc: "Évolution + MSE + plan",
+    ui: { compactTabs:["identite","syndromes","mse","prise","plan"], fullTabs:["identite","contexte","syndromes","mse","prise","plan"] },
     template:
-`Consultation psychiatrique — {{today}}
+`Note d’évolution — {{today}}
 
-{{identite}}. Évaluation réalisée dans le cadre d’un projet de groupe de psychoéducation pour les personnes présentant un trouble de la personnalité borderline, en évaluation conjointe.
+Évolution : {{evolution_sentence}}
 
-Contexte : {{contexte}}.
+Clinique : {{syndrome_sentence}}. {{mse_sentence}}
 
-Éléments à l’avant-plan : {{elements}}.
+Prise en charge : {{care_sentence}}
 
-Parcours / suivi : {{histoire}}.
+Plan : {{plan_sentence}}`
+  },
+  {
+    id: uid(),
+    name: "Sevrage alcool — admission semaine 1",
+    category: "Sevrage alcool",
+    desc: "Admission + plan sevrage + suivi",
+    ui: { compactTabs:["identite","contexte","addicto","mse","schema","plan"], fullTabs:["identite","contexte","addicto","syndromes","mse","schema","plan"] },
+    template:
+`Admission — Sevrage alcool (Semaine 1) — {{today}}
 
-Clinique : {{clinique}}.
+Contexte : {{context_sentence}}
 
-Impulsivité / consommations : {{substances}}.
+Consommations : {{addicto_sentence}}
 
-Ressources : {{ressources}}.
+État mental : {{mse_sentence}}
 
-Plan : {{plan}}.`
+Schéma de sevrage : {{taper_sentence}}
+
+Plan : {{plan_sentence}}`
+  },
+  {
+    id: uid(),
+    name: "Sevrage alcool — sortie semaine 1 (pré-semaine intermédiaire)",
+    category: "Sevrage alcool",
+    desc: "Bilan + semaine intermédiaire",
+    ui: { compactTabs:["identite","evolution","mse","plan"], fullTabs:["identite","contexte","evolution","mse","prise","plan"] },
+    template:
+`Sortie — Sevrage alcool (Fin Semaine 1) — {{today}}
+
+Bilan : {{evolution_sentence}}
+
+État mental : {{mse_sentence}}
+
+Plan / semaine intermédiaire : {{plan_sentence}}`
+  },
+  {
+    id: uid(),
+    name: "Sevrage alcool — sortie semaine 2 (fin programme)",
+    category: "Sevrage alcool",
+    desc: "Bilan + suivi + prévention rechute",
+    ui: { compactTabs:["identite","evolution","addicto","mse","plan"], fullTabs:["identite","contexte","evolution","addicto","mse","prise","plan"] },
+    template:
+`Sortie — Sevrage alcool (Fin Semaine 2) — {{today}}
+
+Bilan : {{evolution_sentence}}
+
+Consommations / prévention : {{addicto_sentence}}
+
+État mental : {{mse_sentence}}
+
+Suivi et plan : {{plan_sentence}}`
+  },
+  {
+    id: uid(),
+    name: "Schéma de sevrage — générateur (documentation)",
+    category: "Sevrage alcool",
+    desc: "Répartition 8h/12h/18h/22h + dégressif",
+    ui: { compactTabs:["identite","schema"], fullTabs:["identite","schema"] },
+    template:
+`Schéma de sevrage (documentation) — {{today}}
+
+Patient : {{identite}}
+
+Molécule : {{taper_molecule}}
+Dose totale J1 (entrée manuelle) : {{taper_total}}
+Répartition (8h / 12h / 18h / 22h) : {{taper_split}}
+
+Règle de décroissance (à valider par le prescripteur) : {{taper_rule}}
+
+Table (générée) :
+{{taper_table}}`
   }
 ];
 
+/* ---------- State ---------- */
 let templates = [];
 let state = {
-  mode: "run",        // run | edit
   activeId: null,
+  tab: "identite",
   focus: false,
-  lastFormValues: {}
+  drawer: false,
+  uiMode: "compact", // compact | full
+  valuesByTpl: {} // templateId -> { values }
 };
 
-const $ = (id)=> document.getElementById(id);
-
+/* ---------- Load/Save ---------- */
 function load(){
   const raw = localStorage.getItem(LS_KEY);
   templates = raw ? JSON.parse(raw) : DEFAULT_TEMPLATES;
@@ -444,308 +614,960 @@ function load(){
   if(!state.activeId || !templates.some(t=>t.id===state.activeId)){
     state.activeId = templates[0]?.id ?? null;
   }
-  save(); // normalize
+  if(!state.valuesByTpl) state.valuesByTpl = {};
+  save();
 }
-
 function save(){
   localStorage.setItem(LS_KEY, JSON.stringify(templates));
   localStorage.setItem(LS_STATE, JSON.stringify(state));
 }
 
-function escapeHtml(s){
-  return String(s ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
+/* ---------- Drawer controls ---------- */
+function openDrawer(){
+  state.drawer = true;
+  $("drawerBack").style.display = "block";
+  $("drawer").style.right = "0px";
+  save();
+}
+function closeDrawer(){
+  state.drawer = false;
+  $("drawerBack").style.display = "none";
+  $("drawer").style.right = "-520px";
+  save();
 }
 
+/* ---------- Active template ---------- */
+function getActive(){
+  return templates.find(t=>t.id===state.activeId) || null;
+}
+function getVals(){
+  const t=getActive();
+  if(!t) return {};
+  if(!state.valuesByTpl[t.id]) state.valuesByTpl[t.id] = {};
+  return state.valuesByTpl[t.id];
+}
+function setVal(key, value){
+  const t=getActive(); if(!t) return;
+  const v=getVals();
+  v[key]=value;
+  save();
+}
+
+/* ---------- UI Tabs ---------- */
+const TAB_DEFS = [
+  {id:"identite", label:"Identité"},
+  {id:"contexte", label:"Contexte"},
+  {id:"diag", label:"Diagnostic"},
+  {id:"syndromes", label:"Syndromes"},
+  {id:"addicto", label:"Conso"},
+  {id:"mse", label:"Examen mental"},
+  {id:"prise", label:"Prise en charge"},
+  {id:"capacite", label:"Travail"},
+  {id:"evolution", label:"Évolution"},
+  {id:"schema", label:"Schéma sevrage"},
+  {id:"plan", label:"Plan / suite"}
+];
+
+function currentTabs(){
+  const t=getActive();
+  if(!t) return TAB_DEFS.map(x=>x.id);
+  const wanted = (state.uiMode==="compact" ? t.ui?.compactTabs : t.ui?.fullTabs) || TAB_DEFS.map(x=>x.id);
+  return wanted;
+}
+
+function renderTabs(){
+  const tabsEl = $("tabs");
+  tabsEl.innerHTML = "";
+  const allowed = currentTabs();
+
+  allowed.forEach(id=>{
+    const def = TAB_DEFS.find(x=>x.id===id);
+    if(!def) return;
+    const b = document.createElement("div");
+    b.className = "tab"+(state.tab===id ? " active":"");
+    b.textContent = def.label;
+    b.onclick = ()=>{
+      state.tab = id; save(); renderAll();
+    };
+    tabsEl.appendChild(b);
+  });
+
+  const activeDef = TAB_DEFS.find(x=>x.id===state.tab);
+  $("chipTab").textContent = "Onglet : " + (activeDef ? activeDef.label : "—");
+}
+
+/* ---------- Render drawer template list ---------- */
 function renderTplList(){
   const q = ($("searchTpl").value || "").toLowerCase().trim();
   const list = $("tplList");
   list.innerHTML = "";
 
-  const filtered = templates.filter(t=>{
-    const hay = (t.name+" "+t.category+" "+t.desc).toLowerCase();
-    return !q || hay.includes(q);
+  templates
+    .filter(t=>{
+      const hay = (t.name+" "+t.category+" "+t.desc).toLowerCase();
+      return !q || hay.includes(q);
+    })
+    .forEach(t=>{
+      const div = document.createElement("div");
+      div.className = "item"+(t.id===state.activeId ? " active":"");
+      div.innerHTML = `<b>${escapeHtml(t.name)}</b>
+                       <small>${escapeHtml(t.category || "—")} • ${escapeHtml(t.desc || "")}</small>`;
+      div.onclick = ()=>{
+        state.activeId = t.id;
+        // reset tab if not allowed
+        if(!currentTabs().includes(state.tab)){
+          state.tab = currentTabs()[0] || "identite";
+        }
+        save();
+        renderAll();
+      };
+      list.appendChild(div);
+    });
+}
+
+/* ---------- Blocks builders ---------- */
+function checkboxItem({id,label,sub,onChange,checked}){
+  const wrap=document.createElement("div");
+  wrap.className="opt";
+  const cb=document.createElement("input");
+  cb.type="checkbox";
+  cb.checked=!!checked;
+  cb.onchange=()=> onChange(cb.checked);
+  const t=document.createElement("div");
+  t.className="t";
+  const b=document.createElement("b"); b.textContent=label;
+  t.appendChild(b);
+  if(sub){
+    const s=document.createElement("small"); s.textContent=sub;
+    t.appendChild(s);
+  }
+  wrap.appendChild(cb); wrap.appendChild(t);
+  return wrap;
+}
+
+function multiSelectLine(domain, selected, onChange){
+  const block=document.createElement("div");
+  block.className="block";
+  const h=document.createElement("h4");
+  h.innerHTML = `${escapeHtml(domain.label)} <span class="muted" style="font-weight:500;">(multi)</span>`;
+  block.appendChild(h);
+
+  const grid=document.createElement("div");
+  grid.className="grid2";
+
+  domain.opts.forEach(opt=>{
+    const id = domain.id+"::"+opt;
+    grid.appendChild(checkboxItem({
+      id,
+      label: opt,
+      checked: selected.includes(opt),
+      onChange:(v)=>{
+        const next = v ? [...new Set([...selected,opt])] : selected.filter(x=>x!==opt);
+        onChange(next);
+      }
+    }));
   });
 
-  $("tplCount").textContent = `${filtered.length}/${templates.length}`;
+  block.appendChild(grid);
+  return block;
+}
 
-  filtered.forEach(t=>{
-    const div = document.createElement("div");
-    div.className = "item"+(t.id===state.activeId ? " active":"");
-    div.innerHTML = `<b>${escapeHtml(t.name)}</b>
-                     <small>${escapeHtml(t.category || "—")} • ${escapeHtml(t.desc || "")}</small>`;
-    div.onclick = ()=>{ state.activeId = t.id; save(); renderAll(); };
-    list.appendChild(div);
+/* ---------- Tab renderers ---------- */
+function renderIdentite(container){
+  const v=getVals();
+  container.innerHTML = `
+    <div class="row">
+      <div class="col">
+        <label>Identité (optionnel)</label>
+        <input id="identite" placeholder="Ex. Mme X / M. Y / Initiales" value="${escapeHtml(v.identite||"")}"/>
+      </div>
+      <div class="col">
+        <label>Pronoms / genre (pour accords)</label>
+        <select id="civilite">
+          <option value="F">F (elle)</option>
+          <option value="M">M (il)</option>
+          <option value="N">N (neutre)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <label>Cadre</label>
+        <select id="cadre">
+          <option value="consult">Consultation</option>
+          <option value="liaison">Liaison</option>
+          <option value="hosp">Hospitalisation</option>
+          <option value="sevrage">Sevrage alcool</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Date (auto)</label>
+        <input value="${todayFR()}" disabled/>
+      </div>
+    </div>
+    <div class="block">
+      <h4>Style</h4>
+      <div class="muted" style="font-size:12px;">
+        Ton style “humain propre” : phrases courtes, pas trop soutenu, clinique et lisible.
+      </div>
+    </div>
+  `;
+
+  $("civilite").value = v.civilite || "N";
+  $("cadre").value = v.cadre || "consult";
+
+  $("identite").oninput = (e)=> setVal("identite", e.target.value);
+  $("civilite").onchange = (e)=> setVal("civilite", e.target.value);
+  $("cadre").onchange = (e)=> setVal("cadre", e.target.value);
+}
+
+function renderContexte(container){
+  const v=getVals();
+  container.innerHTML = `
+    <label>Contexte (champ libre court)</label>
+    <textarea id="context" placeholder="Ex. passage urgences, demande clarification, situation familiale…" class="mono">${escapeHtml(v.context||"")}</textarea>
+
+    <div class="block">
+      <h4>Contexte — phrases rapides</h4>
+      <div class="grid2" id="ctxOpts"></div>
+    </div>
+  `;
+
+  const ctxLibrary = [
+    {id:"ctx_urg", label:"Suite passage aux urgences", phrase:"suite à un passage aux urgences pour clarification clinique"},
+    {id:"ctx_new", label:"Nouveau suivi", phrase:"dans le cadre de la mise en place d’un nouveau suivi"},
+    {id:"ctx_stress", label:"Facteurs de stress", phrase:"dans un contexte de facteurs de stress psychosociaux multiples"},
+    {id:"ctx_log", label:"Logement compliqué", phrase:"dans un contexte de vie commune/conditions de logement décrites comme compliquées"},
+    {id:"ctx_work", label:"Enjeu professionnel", phrase:"dans un contexte de retentissement important sur l’activité professionnelle"}
+  ];
+  const selected = v.ctxSel || [];
+  const grid = $("ctxOpts");
+  ctxLibrary.forEach(it=>{
+    grid.appendChild(checkboxItem({
+      id:it.id, label:it.label, sub:it.phrase,
+      checked: selected.includes(it.id),
+      onChange:(ok)=>{
+        const next = ok ? [...new Set([...selected,it.id])] : selected.filter(x=>x!==it.id);
+        setVal("ctxSel", next);
+      }
+    }));
+  });
+
+  $("context").oninput=(e)=> setVal("context", e.target.value);
+}
+
+function renderDiag(container){
+  const v=getVals();
+  const dx = v.diagnostic || "un trouble anxiodépressif";
+  container.innerHTML = `
+    <div class="row">
+      <div class="col">
+        <label>Diagnostic (liste rapide)</label>
+        <select id="dx">
+          <option value="un trouble anxieux">Trouble anxieux</option>
+          <option value="un trouble anxiodépressif">Trouble anxiodépressif</option>
+          <option value="un épisode dépressif">Syndrome/épisode dépressif</option>
+          <option value="un trouble de stress post-traumatique">Syndrome traumatique / PTSD</option>
+          <option value="une dysrégulation émotionnelle / traits borderline">Dysrégulation émotionnelle / traits borderline</option>
+          <option value="un trouble lié à l’usage de substances">Trouble lié à l’usage de substances</option>
+          <option value="(à préciser)">Autre (à préciser)</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Précision (optionnel)</label>
+        <input id="dxPrec" placeholder="Ex. anxiété au premier plan, comorbidités…" value="${escapeHtml(v.dxPrec||"")}"/>
+      </div>
+    </div>
+  `;
+  $("dx").value = dx;
+  $("dx").onchange=(e)=> setVal("diagnostic", e.target.value);
+  $("dxPrec").oninput=(e)=> setVal("dxPrec", e.target.value);
+}
+
+function renderSyndromes(container){
+  const v=getVals();
+  container.innerHTML = `
+    <div class="row">
+      <div class="col">
+        <label>Pack clinique</label>
+        <select id="pack">
+          <option value="anxieux">Syndrome anxieux</option>
+          <option value="anxiodepressif">Syndrome anxiodépressif</option>
+          <option value="depressif">Syndrome dépressif</option>
+          <option value="traumatique">Syndrome post-traumatique</option>
+          <option value="addictions">Consommations / usage</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Champ libre (1 phrase max)</label>
+        <input id="synFree" placeholder="Ex. hypersensibilité au bruit, peur d’explosion…" value="${escapeHtml(v.synFree||"")}"/>
+      </div>
+    </div>
+
+    <div class="block">
+      <h4 id="packTitle">—</h4>
+      <div class="grid2" id="packGrid"></div>
+    </div>
+  `;
+
+  const packId = v.pack || "anxiodepressif";
+  $("pack").value = packId;
+
+  function paintPack(){
+    const p = SYNDROME_PACKS[$("pack").value];
+    $("packTitle").textContent = p.title;
+    const sel = v.synSel?.[$("pack").value] || [];
+    const grid = $("packGrid");
+    grid.innerHTML = "";
+    p.items.forEach(it=>{
+      grid.appendChild(checkboxItem({
+        id:it.id,
+        label: it.label,
+        sub: it.phrase,
+        checked: sel.includes(it.id),
+        onChange:(ok)=>{
+          const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
+          const all = v.synSel || {};
+          all[$("pack").value] = next;
+          setVal("synSel", all);
+          // refresh local v reference
+          v.synSel = all;
+        }
+      }));
+    });
+  }
+
+  $("pack").onchange = (e)=> { setVal("pack", e.target.value); paintPack(); };
+  $("synFree").oninput = (e)=> setVal("synFree", e.target.value);
+  paintPack();
+}
+
+function renderAddicto(container){
+  const v=getVals();
+  container.innerHTML = `
+    <label>Consommations (champ libre court)</label>
+    <textarea id="addFree" class="mono" placeholder="Ex. alcool quotidien, cannabis diminué, sport ressource…">${escapeHtml(v.addFree||"")}</textarea>
+
+    <div class="block">
+      <h4>Cases rapides (usage / évolution)</h4>
+      <div class="grid2" id="addGrid"></div>
+    </div>
+  `;
+
+  const pack = SYNDROME_PACKS.addictions;
+  const sel = v.addSel || [];
+  const grid = $("addGrid");
+  pack.items.forEach(it=>{
+    grid.appendChild(checkboxItem({
+      id:it.id, label:it.label, sub:it.phrase,
+      checked: sel.includes(it.id),
+      onChange:(ok)=>{
+        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
+        setVal("addSel", next);
+      }
+    }));
+  });
+
+  $("addFree").oninput=(e)=> setVal("addFree", e.target.value);
+}
+
+function renderMSE(container){
+  const v=getVals();
+  container.innerHTML = `<div class="muted" style="font-size:12px;">
+    Examen mental systématique : coche plusieurs options par domaine.  
+    Le texte final fera une ligne compacte.
+  </div>`;
+
+  const all = v.mse || {};
+  MSE_DOMAINS.forEach(dom=>{
+    const selected = all[dom.id] || [];
+    const line = multiSelectLine(dom, selected, (next)=>{
+      all[dom.id]=next;
+      setVal("mse", all);
+    });
+    container.appendChild(line);
   });
 }
 
-function getActive(){
-  return templates.find(t=>t.id===state.activeId) || null;
-}
+function renderPrise(container){
+  const v=getVals();
+  container.innerHTML = `
+    <div class="muted" style="font-size:12px;">
+      Médication = documentation : tu coches et tu complètes le nom/dose si tu veux.  
+      Pas de recommandation automatique.
+    </div>
 
-function setMode(mode){
-  state.mode = mode;
-  save();
-  renderAll();
-}
+    <div class="block">
+      <h4>Psychothérapie / cadre</h4>
+      <div class="grid2" id="carePsy"></div>
+    </div>
 
-function setFocus(on){
-  state.focus = on;
-  document.body.classList.toggle("focus", !!on);
-  save();
-}
+    <div class="block">
+      <h4>Médication (documentation)</h4>
+      <div id="medArea"></div>
+    </div>
+  `;
 
-function renderAll(){
-  const t = getActive();
-  $("activeChip").textContent = `Document : ${t ? t.name : "—"}`;
-  $("modeChip").textContent = `Mode : ${state.mode==="run" ? "Consultation" : "Édition"}`;
-  $("editArea").classList.toggle("hidden", state.mode!=="edit");
-  $("paneTitle").textContent = state.mode==="run" ? "Saisie" : "Saisie (aperçu)";
+  const carePsyLib = [
+    {id:"psy_follow", label:"Suivi régulier", phrase:"un suivi psychiatrique régulier"},
+    {id:"psy_psy", label:"Suivi psychologue", phrase:"un suivi psychothérapeutique en cours"},
+    {id:"psy_group", label:"Groupe psychoéducation", phrase:"une orientation vers un groupe de psychoéducation"},
+    {id:"psy_hdj", label:"Hôpital de jour", phrase:"une prise en charge structurée en hôpital de jour"},
+    {id:"psy_tools", label:"Psychoéducation émotions", phrase:"un travail autour de la régulation émotionnelle et des stratégies d’apaisement"}
+  ];
+  const sel = v.careSel || [];
+  const grid = $("carePsy");
+  carePsyLib.forEach(it=>{
+    grid.appendChild(checkboxItem({
+      id:it.id, label:it.label, sub:it.phrase,
+      checked: sel.includes(it.id),
+      onChange:(ok)=>{
+        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
+        setVal("careSel", next);
+      }
+    }));
+  });
 
-  renderTplList();
-  renderForm();
-  renderEditPane();
-}
+  const medSel = v.medSel || {};
+  const medArea = $("medArea");
+  medArea.innerHTML = "";
 
-function renderForm(){
-  const t = getActive();
-  const area = $("formArea");
-  area.innerHTML = "";
-  if(!t){ area.innerHTML = `<p class="muted">Aucun template.</p>`; return; }
+  MED_SETS.forEach(m=>{
+    const on = !!medSel[m.id]?.on;
+    const b=document.createElement("div");
+    b.className="block";
+    b.innerHTML = `
+      <h4>${escapeHtml(m.label)} <span class="muted" style="font-weight:500;">(case + nom/dose)</span></h4>
+      <div class="row">
+        <div class="col" style="min-width:220px;">
+          <div class="opt">
+            <input type="checkbox" id="cb_${m.id}" ${on?"checked":""}/>
+            <div class="t">
+              <b>Inclure dans le texte</b>
+              <small>${escapeHtml(m.phrase.replace(/\{\{.*?\}\}/g,"…"))}</small>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <label>Nom (optionnel)</label>
+          <input id="nm_${m.id}" placeholder="${m.examples.join(", ")}" value="${escapeHtml(medSel[m.id]?.name||"")}"/>
+        </div>
+        <div class="col">
+          <label>Dose (optionnel)</label>
+          <input id="ds_${m.id}" placeholder="ex. 10 mg/j" value="${escapeHtml(medSel[m.id]?.dose||"")}"/>
+        </div>
+      </div>
+    `;
+    medArea.appendChild(b);
 
-  const key = t.id;
-  const values = state.lastFormValues[key] || {};
-
-  (t.fields || []).forEach(f=>{
-    const wrap = document.createElement("div");
-    const lab = document.createElement("label");
-    lab.textContent = f.label || f.id;
-    wrap.appendChild(lab);
-
-    let el;
-    if(f.type==="textarea"){
-      el = document.createElement("textarea");
-    } else if(f.type==="select"){
-      el = document.createElement("select");
-      (f.options || []).forEach(opt=>{
-        const o = document.createElement("option");
-        o.value = opt;
-        o.textContent = opt;
-        el.appendChild(o);
-      });
-    } else if(f.type==="checkbox"){
-      el = document.createElement("input");
-      el.type = "checkbox";
-    } else if(f.type==="date"){
-      el = document.createElement("input");
-      el.type = "date";
-    } else if(f.type==="number"){
-      el = document.createElement("input");
-      el.type = "number";
-    } else {
-      el = document.createElement("input");
-      el.type = "text";
-    }
-    el.id = "f_"+f.id;
-
-    // Defaults intelligents
-    if(f.type==="checkbox"){
-      // anonymisation ON par défaut si champ id=anonyme
-      if(values[f.id] === undefined && f.id === "anonyme") el.checked = true;
-      else el.checked = !!values[f.id];
-    } else {
-      el.value = values[f.id] ?? "";
-    }
-
-    el.oninput = ()=> {
-      const v = readFormValues();
-      state.lastFormValues[key] = v;
-      save();
-      if(state.mode==="run") $("output").value = generateText();
+    $("cb_"+m.id).onchange = (e)=>{
+      medSel[m.id] = medSel[m.id] || {};
+      medSel[m.id].on = e.target.checked;
+      setVal("medSel", medSel);
     };
-    el.onchange = el.oninput;
+    $("nm_"+m.id).oninput = (e)=>{
+      medSel[m.id] = medSel[m.id] || {};
+      medSel[m.id].name = e.target.value;
+      setVal("medSel", medSel);
+    };
+    $("ds_"+m.id).oninput = (e)=>{
+      medSel[m.id] = medSel[m.id] || {};
+      medSel[m.id].dose = e.target.value;
+      setVal("medSel", medSel);
+    };
+  });
+}
 
-    wrap.appendChild(el);
+function renderCapacite(container){
+  const v=getVals();
+  container.innerHTML = `
+    <div class="row">
+      <div class="col">
+        <label>Capacité de travail</label>
+        <select id="work">
+          <option value="non compatible avec une reprise d’activité professionnelle">Non compatible</option>
+          <option value="partiellement compatible, à discuter (temps partiel/ajustements)">Partiellement compatible</option>
+          <option value="compatible avec une reprise progressive">Compatible (progressif)</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Justification (cases)</label>
+        <div class="grid2" id="workGrid"></div>
+      </div>
+    </div>
+  `;
 
-    if(f.hint){
-      const hint = document.createElement("div");
-      hint.className="muted";
-      hint.style.fontSize="12px";
-      hint.style.marginTop="6px";
-      hint.textContent = f.hint;
-      wrap.appendChild(hint);
+  $("work").value = v.work || "non compatible avec une reprise d’activité professionnelle";
+  $("work").onchange = (e)=> setVal("work", e.target.value);
+
+  const lib = [
+    {id:"w_ret", label:"Retentissement fonctionnel", phrase:"retentissement fonctionnel important"},
+    {id:"w_sleep", label:"Sommeil non réparateur", phrase:"sommeil non réparateur"},
+    {id:"w_anx", label:"Anxiété intense", phrase:"anxiété persistante au premier plan"},
+    {id:"w_cogn", label:"Attention/concentration", phrase:"altération attentionnelle et fatigabilité"},
+    {id:"w_social", label:"Isolement/évitement", phrase:"évitement et isolement social"}
+  ];
+  const sel = v.workSel || [];
+  const grid = $("workGrid");
+  lib.forEach(it=>{
+    grid.appendChild(checkboxItem({
+      id:it.id, label:it.label, sub:it.phrase,
+      checked: sel.includes(it.id),
+      onChange:(ok)=>{
+        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
+        setVal("workSel", next);
+      }
+    }));
+  });
+}
+
+function renderEvolution(container){
+  const v=getVals();
+  container.innerHTML = `
+    <div class="row">
+      <div class="col">
+        <label>Évolution globale</label>
+        <select id="evo">
+          <option value="lentement stable">Lentement stable</option>
+          <option value="stable">Stable</option>
+          <option value="instable">Instable</option>
+          <option value="en amélioration">En amélioration</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Éléments marquants (cases)</label>
+        <div class="grid2" id="evoGrid"></div>
+      </div>
+    </div>
+
+    <label>Champ libre (bilan / semaine / ressenti)</label>
+    <textarea id="evoFree" class="mono" placeholder="Ex. semaine intermédiaire, difficultés, ressources…">${escapeHtml(v.evoFree||"")}</textarea>
+  `;
+  $("evo").value = v.evo || "lentement stable";
+  $("evo").onchange = (e)=> setVal("evo", e.target.value);
+
+  const lib = [
+    {id:"e_hd", label:"Mise en place HDJ", phrase:"mise en place d’une prise en charge structurée (HDJ)"},
+    {id:"e_tools", label:"Démarches actives", phrase:"démarches actives engagées pour stabiliser l’état"},
+    {id:"e_cut", label:"Diminution consommations", phrase:"diminution des consommations avec stratégies alternatives"},
+    {id:"e_sleep", label:"Sommeil mieux/moins bien", phrase:"évolution du sommeil à surveiller"},
+    {id:"e_risk", label:"Sécurité", phrase:"vigilance sur la sécurité (idées noires)"},
+  ];
+  const sel = v.evoSel || [];
+  const grid = $("evoGrid");
+  lib.forEach(it=>{
+    grid.appendChild(checkboxItem({
+      id:it.id, label:it.label, sub:it.phrase,
+      checked: sel.includes(it.id),
+      onChange:(ok)=>{
+        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
+        setVal("evoSel", next);
+      }
+    }));
+  });
+
+  $("evoFree").oninput=(e)=> setVal("evoFree", e.target.value);
+}
+
+function renderSchema(container){
+  const v=getVals();
+  container.innerHTML = `
+    <div class="muted" style="font-size:12px;">
+      Générateur = aide à la mise en forme. Tu entres la dose totale et le nombre de jours, l’app produit un tableau.
+      La règle “dégressif” est paramétrable. Rien n’est prescrit automatiquement.
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label>Molécule (texte libre)</label>
+        <input id="tapMol" placeholder="Ex. diazépam / lorazépam / autre" value="${escapeHtml(v.taper_molecule||"")}"/>
+      </div>
+      <div class="col">
+        <label>Dose totale J1 (texte libre)</label>
+        <input id="tapTotal" placeholder="Ex. 40 mg/j" value="${escapeHtml(v.taper_total||"")}"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label>Répartition J1 (8h / 12h / 18h / 22h)</label>
+        <input id="tapSplit" placeholder="Ex. 10 / 10 / 10 / 10" value="${escapeHtml(v.taper_split||"")}"/>
+      </div>
+      <div class="col">
+        <label>Nombre de jours (table)</label>
+        <input id="tapDays" type="number" min="1" max="21" value="${escapeHtml(v.taper_days||"7")}"/>
+      </div>
+    </div>
+
+    <label>Règle de décroissance (texte)</label>
+    <textarea id="tapRule" class="mono" placeholder="Décrire la logique : égal au départ, puis diminution progressive…">${escapeHtml(v.taper_rule||"Dégressif progressif (à valider cliniquement), avec réduction par paliers sur les prises de la journée.")}</textarea>
+
+    <div class="block">
+      <h4>Table générée (simple)</h4>
+      <button class="btn ok" id="btnGenTable">Générer table</button>
+      <textarea id="tapTable" class="mono" style="min-height:180px;" placeholder="Ici s’affichera la table…">${escapeHtml(v.taper_table||"")}</textarea>
+      <small class="muted">Tu peux éditer la table manuellement après génération.</small>
+    </div>
+  `;
+
+  $("tapMol").oninput=(e)=> setVal("taper_molecule", e.target.value);
+  $("tapTotal").oninput=(e)=> setVal("taper_total", e.target.value);
+  $("tapSplit").oninput=(e)=> setVal("taper_split", e.target.value);
+  $("tapDays").oninput=(e)=> setVal("taper_days", e.target.value);
+  $("tapRule").oninput=(e)=> setVal("taper_rule", e.target.value);
+  $("tapTable").oninput=(e)=> setVal("taper_table", e.target.value);
+
+  $("btnGenTable").onclick=()=>{
+    // Simple generator: repeats structure with placeholders for you to adjust
+    const days = Math.max(1, Math.min(21, parseInt($("tapDays").value||"7",10)));
+    const split = ($("tapSplit").value || "—").trim();
+    let out = "";
+    for(let d=1; d<=days; d++){
+      out += `J${d} : 8h __ / 12h __ / 18h __ / 22h __   (base J1: ${split})\n`;
     }
+    $("tapTable").value = out.trim();
+    setVal("taper_table", $("tapTable").value);
+  };
+}
 
-    area.appendChild(wrap);
+function renderPlan(container){
+  const v=getVals();
+  container.innerHTML = `
+    <label>Plan / suite (cases)</label>
+    <div class="block">
+      <h4>Plan rapide</h4>
+      <div class="grid2" id="planGrid"></div>
+    </div>
+
+    <label>Champ libre (suite concrète)</label>
+    <textarea id="planFree" class="mono" placeholder="Ex. revoir date X, HDJ le 16/02, groupe psychoéducation…">${escapeHtml(v.planFree||"")}</textarea>
+  `;
+
+  const lib = [
+    {id:"pl_follow", label:"Suivi rapproché", phrase:"poursuite d’un suivi rapproché avec réévaluation clinique régulière"},
+    {id:"pl_group", label:"Groupe psychoéducation", phrase:"proposition d’intégration dans un groupe de psychoéducation (à rediscuter)"},
+    {id:"pl_hdj", label:"HDJ", phrase:"début de prise en charge en hôpital de jour (selon organisation)"},
+    {id:"pl_safety", label:"Vigilance sécurité", phrase:"vigilance sur la sécurité avec consignes de recours si aggravation"},
+    {id:"pl_social", label:"Ressources / réseau", phrase:"mobilisation des ressources (réseau, hygiène de vie, activité physique)"}
+  ];
+  const sel = v.planSel || [];
+  const grid = $("planGrid");
+  lib.forEach(it=>{
+    grid.appendChild(checkboxItem({
+      id:it.id, label:it.label, sub:it.phrase,
+      checked: sel.includes(it.id),
+      onChange:(ok)=>{
+        const next = ok ? [...new Set([...sel,it.id])] : sel.filter(x=>x!==it.id);
+        setVal("planSel", next);
+      }
+    }));
   });
 
-  if(state.mode==="run"){
-    $("output").value = generateText();
-  }
+  $("planFree").oninput=(e)=> setVal("planFree", e.target.value);
 }
 
-function readFormValues(){
-  const t = getActive();
-  if(!t) return {};
-  const values = {};
-  (t.fields||[]).forEach(f=>{
-    const el = $("f_"+f.id);
-    if(!el) return;
-    if(f.type==="checkbox") values[f.id] = el.checked;
-    else values[f.id] = el.value;
+/* ---------- Sentence builders ---------- */
+function buildContextSentence(v){
+  const lib = {
+    ctx_urg:"suite à un passage aux urgences pour clarification clinique",
+    ctx_new:"dans le cadre de la mise en place d’un nouveau suivi",
+    ctx_stress:"dans un contexte de facteurs de stress psychosociaux multiples",
+    ctx_log:"dans un contexte de vie commune/conditions de logement décrites comme compliquées",
+    ctx_work:"dans un contexte de retentissement important sur l’activité professionnelle"
+  };
+  const picks = (v.ctxSel||[]).map(id=>lib[id]).filter(Boolean);
+  const free = (v.context||"").trim();
+  const all = [...picks];
+  if(free) all.push(free);
+  if(!all.length) return "—";
+  return all.join(", ");
+}
+
+function buildSyndromeSentence(v){
+  const packId = v.pack || "anxiodepressif";
+  const pack = SYNDROME_PACKS[packId];
+  const sel = v.synSel?.[packId] || [];
+  const phrases = sel.map(id=>{
+    const it = pack.items.find(x=>x.id===id);
+    return it ? it.phrase : null;
+  }).filter(Boolean);
+
+  const free = (v.synFree||"").trim();
+  const out = [];
+  if(phrases.length) out.push(phrases.join(", "));
+  if(free) out.push(free);
+  return out.length ? out.join(". ") : "—";
+}
+
+function buildAddictoSentence(v){
+  const pack = SYNDROME_PACKS.addictions;
+  const sel = v.addSel || [];
+  const phrases = sel.map(id=>{
+    const it = pack.items.find(x=>x.id===id);
+    return it ? it.phrase : null;
+  }).filter(Boolean);
+  const free = (v.addFree||"").trim();
+  const out = [];
+  if(phrases.length) out.push(phrases.join(", "));
+  if(free) out.push(free);
+  return out.length ? out.join(". ") : "—";
+}
+
+function buildMSESentence(v){
+  const mse = v.mse || {};
+  const lines = [];
+  MSE_DOMAINS.forEach(dom=>{
+    const sel = mse[dom.id] || [];
+    if(sel.length){
+      lines.push(`${dom.label} : ${sel.join(", ")}`);
+    }
   });
-  return values;
+  return lines.length ? lines.join(" ; ") : "Examen mental : non systématisé ce jour";
 }
 
-function formatDateFR(iso){
-  if(!iso) return "";
-  const d = new Date(iso+"T00:00:00");
-  if(isNaN(d)) return iso;
-  const pad = (n)=> String(n).padStart(2,"0");
-  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+function buildCareSentence(v){
+  const careLib = {
+    psy_follow:"un suivi psychiatrique régulier",
+    psy_psy:"un suivi psychothérapeutique en cours",
+    psy_group:"une orientation vers un groupe de psychoéducation",
+    psy_hdj:"une prise en charge structurée en hôpital de jour",
+    psy_tools:"un travail autour de la régulation émotionnelle et des stratégies d’apaisement"
+  };
+  const picks = (v.careSel||[]).map(id=>careLib[id]).filter(Boolean);
+
+  // meds
+  const medSel = v.medSel || {};
+  const meds = [];
+  MED_SETS.forEach(m=>{
+    const on = medSel[m.id]?.on;
+    if(!on) return;
+    const name = (medSel[m.id]?.name||"").trim();
+    const dose = (medSel[m.id]?.dose||"").trim();
+    const ctx = {
+      ["med_"+m.id+"_name"]: name || "—",
+      ["med_"+m.id+"_dose"]: dose || "—"
+    };
+    // build phrase by replacing placeholders
+    let ph = m.phrase;
+    ph = ph.replace(/\{\{med_ad_name\}\}/g, name||"")
+           .replace(/\{\{med_ad_dose\}\}/g, dose||"")
+           .replace(/\{\{med_ap_name\}\}/g, name||"")
+           .replace(/\{\{med_ap_dose\}\}/g, dose||"")
+           .replace(/\{\{med_anx_name\}\}/g, name||"")
+           .replace(/\{\{med_anx_dose\}\}/g, dose||"")
+           .replace(/\{\{med_sleep_name\}\}/g, name||"")
+           .replace(/\{\{med_sleep_dose\}\}/g, dose||"")
+           .replace(/\{\{med_add_name\}\}/g, name||"")
+           .replace(/\{\{med_add_dose\}\}/g, dose||"");
+    // clean
+    ph = ph.replace(/\s+/g," ").trim();
+    if(ph.endsWith("()")) ph = ph.replace("()","");
+    meds.push(ph);
+  });
+
+  const all = [];
+  if(picks.length) all.push(picks.join(", "));
+  if(meds.length) all.push(meds.join(", "));
+  return all.length ? all.join(", ") : "—";
 }
 
-function cleanText(out){
-  out = out.replace(/\n[ \t]*\n[ \t]*\n+/g, "\n\n");
-  out = out.replace(/\n\n\s*\n/g, "\n\n");
-  out = out.replace(/[ \t]+\n/g, "\n");
-  return out.trim();
+function buildWorkSentence(v){
+  const base = v.work || "non compatible avec une reprise d’activité professionnelle";
+  const lib = {
+    w_ret:"retentissement fonctionnel important",
+    w_sleep:"sommeil non réparateur",
+    w_anx:"anxiété persistante au premier plan",
+    w_cogn:"altération attentionnelle et fatigabilité",
+    w_social:"évitement et isolement social"
+  };
+  const picks = (v.workSel||[]).map(id=>lib[id]).filter(Boolean);
+  if(!picks.length) return base;
+  return `${base}, compte tenu de ${picks.join(", ")}`;
 }
 
+function buildEvolutionSentence(v){
+  const base = v.evo || "lentement stable";
+  const lib = {
+    e_hd:"mise en place d’une prise en charge structurée (HDJ)",
+    e_tools:"démarches actives engagées pour stabiliser l’état",
+    e_cut:"diminution des consommations avec stratégies alternatives",
+    e_sleep:"évolution du sommeil à surveiller",
+    e_risk:"vigilance sur la sécurité (idées noires)",
+  };
+  const picks = (v.evoSel||[]).map(id=>lib[id]).filter(Boolean);
+  const free = (v.evoFree||"").trim();
+  const parts = [`évolution ${base}`];
+  if(picks.length) parts.push(picks.join(", "));
+  if(free) parts.push(free);
+  return parts.join(" ; ");
+}
+
+function buildPlanSentence(v){
+  const lib = {
+    pl_follow:"poursuite d’un suivi rapproché avec réévaluation clinique régulière",
+    pl_group:"proposition d’intégration dans un groupe de psychoéducation (à rediscuter)",
+    pl_hdj:"début de prise en charge en hôpital de jour (selon organisation)",
+    pl_safety:"vigilance sur la sécurité avec consignes de recours si aggravation",
+    pl_social:"mobilisation des ressources (réseau, hygiène de vie, activité physique)"
+  };
+  const picks = (v.planSel||[]).map(id=>lib[id]).filter(Boolean);
+  const free = (v.planFree||"").trim();
+  const all = [];
+  if(picks.length) all.push(picks.join(", "));
+  if(free) all.push(free);
+  return all.length ? all.join(". ") : "—";
+}
+
+/* ---------- Generate document ---------- */
 function generateText(){
-  const t = getActive();
+  const t=getActive();
   if(!t) return "";
-  const vals = readFormValues();
-  const p = pronouns(vals.civilite || "N");
-  const ctx = { ...vals, p, today: todayFR() };
+  const v=getVals();
+  const p = pronouns(v.civilite || "N");
 
-  // Anonymisation par défaut
-  if(ctx.anonyme){
-    ctx.identite = p.patient; // "la patiente / le patient / la personne"
-  }else{
-    if(!ctx.identite) ctx.identite = p.patient;
-  }
+  const ctx = {
+    today: todayFR(),
+    p,
+    identite: (v.identite||"la personne").trim() || "la personne",
+    diagnostic: (v.diagnostic||"(à préciser)") + ((v.dxPrec||"").trim()?(" ("+(v.dxPrec||"").trim()+")"):""),
+    context_sentence: buildContextSentence(v),
+    syndrome_sentence: buildSyndromeSentence(v),
+    addicto_sentence: buildAddictoSentence(v),
+    mse_sentence: buildMSESentence(v),
+    care_sentence: buildCareSentence(v),
+    work_sentence: buildWorkSentence(v),
+    evolution_sentence: buildEvolutionSentence(v),
+    plan_sentence: buildPlanSentence(v),
 
-  // Dates
-  (t.fields||[]).forEach(f=>{
-    if(f.type==="date" && ctx[f.id]){
-      ctx[f.id] = formatDateFR(ctx[f.id]);
-    }
-  });
+    // sevrage schema fields
+    taper_molecule: (v.taper_molecule||"—").trim() || "—",
+    taper_total: (v.taper_total||"—").trim() || "—",
+    taper_split: (v.taper_split||"—").trim() || "—",
+    taper_rule: (v.taper_rule||"—").trim() || "—",
+    taper_table: (v.taper_table||"").trim() || "—"
+  };
 
-  // moteur de placeholders
   let out = String(t.template || "");
-  out = out.replace(/\{\{today\}\}/g, ctx.today)
-           .replace(/\{\{p\.patient\}\}/g, p.patient)
-           .replace(/\{\{p\.sujet\}\}/g, p.sujet)
+
+  // pronouns
+  out = out.replace(/\{\{today\}\}/g, ctx.today);
+  out = out.replace(/\{\{p\.sujet\}\}/g, p.sujet)
            .replace(/\{\{p\.objet\}\}/g, p.objet)
            .replace(/\{\{p\.poss\}\}/g, p.poss)
+           .replace(/\{\{p\.poss2\}\}/g, p.poss2)
            .replace(/\{\{p\.accord\}\}/g, p.accord);
 
+  // fields
   out = out.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key)=>{
-    const v = ctx[key];
-    if(v===undefined || v===null) return "";
-    if(typeof v === "boolean") return v ? "oui" : "non";
-    return String(v).trim();
+    const val = ctx[key];
+    return (val===undefined || val===null) ? "" : String(val);
   });
 
-  // si notes vide → supprime la ligne
-  out = out.replace(/\n\{\{notes\}\}\n/g, "\n");
-  out = cleanText(out);
+  // clean
+  out = out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   return out;
 }
 
-function renderEditPane(){
-  const t = getActive();
-  if(!t) return;
+/* ---------- Render tab body ---------- */
+function renderTabBody(){
+  const t=getActive();
+  const container = $("tabBody");
+  container.innerHTML = "";
+  if(!t){
+    container.innerHTML = `<div class="muted">Aucun template.</div>`;
+    return;
+  }
+  $("chipDoc").textContent = "Document : " + t.name;
 
+  // If focus, choose the “most checkbox-heavy” tabs automatically for the template
+  let tab = state.tab;
+  if(state.focus){
+    // heuristic: prefer syndromes/mse/prise/plan/schema
+    const allowed = currentTabs();
+    const pref = ["syndromes","mse","prise","addicto","plan","schema","capacite","evolution","diag","contexte","identite"];
+    tab = pref.find(x=>allowed.includes(x)) || allowed[0] || "identite";
+    $("chipTab").textContent = "Onglet : Focus";
+  }
+
+  switch(tab){
+    case "identite": return renderIdentite(container);
+    case "contexte": return renderContexte(container);
+    case "diag": return renderDiag(container);
+    case "syndromes": return renderSyndromes(container);
+    case "addicto": return renderAddicto(container);
+    case "mse": return renderMSE(container);
+    case "prise": return renderPrise(container);
+    case "capacite": return renderCapacite(container);
+    case "evolution": return renderEvolution(container);
+    case "schema": return renderSchema(container);
+    case "plan": return renderPlan(container);
+    default: return renderIdentite(container);
+  }
+}
+
+/* ---------- Drawer editor ---------- */
+function renderDrawerEditor(){
+  const t=getActive();
+  if(!t) return;
   $("editName").value = t.name || "";
   $("editCategory").value = t.category || "";
   $("editDesc").value = t.desc || "";
   $("editTemplate").value = t.template || "";
-  $("editFields").value = JSON.stringify(t.fields || [], null, 2);
+
+  $("editName").oninput = (e)=>{ t.name=e.target.value; save(); renderAll(); };
+  $("editCategory").oninput = (e)=>{ t.category=e.target.value; save(); renderTplList(); };
+  $("editDesc").oninput = (e)=>{ t.desc=e.target.value; save(); renderTplList(); };
+  $("editTemplate").oninput = (e)=>{ t.template=e.target.value; save(); };
 }
 
-function updateActiveFromEditor(){
-  const t = getActive();
-  if(!t) return;
-
-  t.name = $("editName").value.trim() || t.name;
-  t.category = $("editCategory").value.trim();
-  t.desc = $("editDesc").value.trim();
-  t.template = $("editTemplate").value;
-
-  const raw = $("editFields").value;
-  const parsed = JSON.parse(raw);
-  if(!Array.isArray(parsed)) throw new Error("fields must be an array");
-  parsed.forEach(f=>{
-    if(!f.id) throw new Error("field missing id");
-    if(!f.type) f.type = "text";
-  });
-  t.fields = parsed;
-
-  save();
-}
-
+/* ---------- Actions ---------- */
 function newTemplate(){
   const t = {
     id: uid(),
     name: "Nouveau template",
     category: "—",
     desc: "à compléter",
-    fields: [
-      {id:"civilite", label:"Genre (pronoms)", type:"select", options:["F","M","N"]},
-      {id:"anonyme", label:"Anonymiser (par défaut)", type:"checkbox"},
-      {id:"identite", label:"Identité (optionnel)", type:"text"},
-      {id:"contenu", label:"Contenu", type:"textarea"}
-    ],
-    template: `{{today}}\n\n{{identite}}.\n\n{{contenu}}`
+    ui: { compactTabs:["identite","diag","syndromes","mse","plan"], fullTabs:["identite","contexte","diag","syndromes","mse","prise","plan"] },
+    template: `{{today}}\n\nJe vois {{identite}} pour {{diagnostic}}.\n\nClinique : {{syndrome_sentence}}.\n{{mse_sentence}}\n\nPlan : {{plan_sentence}}`
   };
   templates.unshift(t);
   state.activeId = t.id;
+  state.tab = "identite";
   save();
   renderAll();
-  setMode("edit");
 }
-
 function duplicateTemplate(){
-  const t = getActive();
-  if(!t) return;
+  const t=getActive(); if(!t) return;
   const copy = JSON.parse(JSON.stringify(t));
   copy.id = uid();
   copy.name = t.name + " (copie)";
   templates.unshift(copy);
   state.activeId = copy.id;
-  save();
-  renderAll();
+  save(); renderAll();
 }
-
 function deleteTemplate(){
-  const t = getActive();
-  if(!t) return;
+  const t=getActive(); if(!t) return;
   if(!confirm("Supprimer ce template ?")) return;
   templates = templates.filter(x=>x.id!==t.id);
-  if(state.lastFormValues[t.id]) delete state.lastFormValues[t.id];
+  delete state.valuesByTpl[t.id];
   state.activeId = templates[0]?.id ?? null;
-  save();
-  renderAll();
+  state.tab = "identite";
+  save(); renderAll();
 }
-
 function exportAll(){
   const blob = new Blob([JSON.stringify({templates, state}, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `psy-writer-export-${Date.now()}.json`;
+  a.download = `psy-writer-v02-export-${Date.now()}.json`;
   a.click();
   setTimeout(()=> URL.revokeObjectURL(a.href), 2500);
 }
-
 function importAll(){
   const inp = document.createElement("input");
-  inp.type = "file";
-  inp.accept = "application/json";
+  inp.type="file";
+  inp.accept="application/json";
   inp.onchange = async ()=>{
-    const f = inp.files[0];
-    if(!f) return;
+    const f=inp.files[0]; if(!f) return;
     const txt = await f.text();
     try{
       const data = JSON.parse(txt);
@@ -755,97 +1577,91 @@ function importAll(){
       if(!state.activeId || !templates.some(t=>t.id===state.activeId)){
         state.activeId = templates[0]?.id ?? null;
       }
-      save();
-      renderAll();
+      if(!state.valuesByTpl) state.valuesByTpl = {};
+      save(); renderAll();
+      alert("Import OK.");
     }catch(e){
-      alert("Import invalide : " + e.message);
+      alert("Import invalide : "+e.message);
     }
   };
   inp.click();
 }
-
 function resetAll(){
   if(!confirm("Reset complet ? (templates + saisies)")) return;
   templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
-  state = { mode:"run", activeId: templates[0]?.id ?? null, focus:false, lastFormValues:{} };
-  save();
-  renderAll();
-  setFocus(false);
+  state = { activeId: templates[0]?.id ?? null, tab:"identite", focus:false, drawer:false, uiMode:"compact", valuesByTpl:{} };
+  save(); renderAll(); closeDrawer(); setFocus(false);
 }
-
-function copyOutput(){
-  const ta = $("output");
+function copyOut(){
+  const ta=$("output");
   ta.select();
   document.execCommand("copy");
 }
+function clearCurrent(){
+  const t=getActive(); if(!t) return;
+  state.valuesByTpl[t.id] = {};
+  save(); renderAll();
+}
 
-function clearForm(){
-  const t = getActive();
-  if(!t) return;
-  state.lastFormValues[t.id] = {};
+/* ---------- Focus / UI mode ---------- */
+function setFocus(on){
+  state.focus = !!on;
+  document.body.classList.toggle("focus", state.focus);
   save();
-  renderForm();
-  $("output").value = generateText();
+  renderAll();
 }
 
-function validateTpl(){
-  try{
-    updateActiveFromEditor();
-    alert("OK — template valide.");
-  }catch(e){
-    alert("Template invalide : " + e.message);
-  }
+/* ---------- Render all ---------- */
+function renderAll(){
+  renderTplList();
+  renderDrawerEditor();
+  renderTabs();
+  renderTabBody();
+  const txt = generateText();
+  $("output").value = txt;
 }
 
-// UI events
-$("btnModeRun").onclick = ()=> setMode("run");
-$("btnModeEdit").onclick = ()=> setMode("edit");
-$("btnFocus").onclick = ()=> setFocus(!state.focus);
-$("searchTpl").oninput = renderTplList;
+/* ---------- Events ---------- */
+$("btnDrawer").onclick = ()=> openDrawer();
+$("btnCloseDrawer").onclick = ()=> closeDrawer();
+$("btnCloseDrawer2").onclick = ()=> closeDrawer();
+$("drawerBack").onclick = ()=> closeDrawer();
+$("searchTpl").oninput = ()=> renderTplList();
 
-$("btnNewTpl").onclick = newTemplate;
-$("btnDuplicate").onclick = duplicateTemplate;
-$("btnDelete").onclick = deleteTemplate;
-
-$("btnGenerate").onclick = ()=> $("output").value = generateText();
-$("btnCopy").onclick = copyOutput;
-$("btnPDF").onclick = ()=> window.print();
-$("btnClearForm").onclick = clearForm;
+$("btnNewTpl").onclick = ()=> newTemplate();
+$("btnDuplicate").onclick = ()=> duplicateTemplate();
+$("btnDeleteTpl").onclick = ()=> deleteTemplate();
 
 $("btnSaveTpl").onclick = ()=>{
-  try{
-    updateActiveFromEditor();
-    renderAll();
-    alert("Enregistré.");
-  }catch(e){
-    alert("Erreur : " + e.message);
-  }
+  save();
+  alert("Template enregistré.");
 };
-$("btnValidateTpl").onclick = validateTpl;
+
+$("btnCompact").onclick = ()=>{ state.uiMode="compact"; save(); renderAll(); };
+$("btnFull").onclick = ()=>{ state.uiMode="full"; save(); renderAll(); };
+
+$("btnGenerate").onclick = ()=>{ $("output").value = generateText(); };
+$("btnGenerate2").onclick = ()=>{ $("output").value = generateText(); };
+$("btnCopy").onclick = copyOut;
+$("btnCopy2").onclick = copyOut;
 
 $("btnExport").onclick = exportAll;
 $("btnImport").onclick = importAll;
 $("btnReset").onclick = resetAll;
 
-// PWA: service worker
-(async function initPWA(){
-  const chip = $("pwaChip");
-  if(!("serviceWorker" in navigator)){
-    chip.textContent = "PWA : non supporté";
-    return;
-  }
-  try{
-    const reg = await navigator.serviceWorker.register("./sw.js");
-    chip.textContent = "PWA : offline prêt";
-    reg.update?.();
-  }catch(e){
-    chip.textContent = "PWA : SW non enregistré";
-  }
-})();
+$("btnFocus").onclick = ()=> setFocus(!state.focus);
 
-// init
+$("btnToggleOutput").onclick = ()=>{
+  const w=$("outputWrap");
+  w.style.display = (w.style.display==="none") ? "block" : "none";
+};
+$("btnClearCurrent").onclick = clearCurrent;
+
+/* ---------- Init ---------- */
 load();
+if(!currentTabs().includes(state.tab)) state.tab = currentTabs()[0] || "identite";
 setFocus(!!state.focus);
+if(state.drawer) openDrawer(); else closeDrawer();
 renderAll();
 </script>
 </body>
