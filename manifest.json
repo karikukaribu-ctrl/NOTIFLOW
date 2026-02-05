@@ -1,0 +1,10 @@
+// FILE: manifest.json
+{
+  "name": "PSY-WRITER",
+  "short_name": "PSY-WRITER",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f1115",
+  "theme_color": "#0f1115",
+  "icons": []
+}
