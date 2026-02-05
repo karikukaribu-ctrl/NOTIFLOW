@@ -1,0 +1,852 @@
+<!-- FILE: index.html
+PSY-WRITER v0.2 — Offline/PWA — Templates de courriers/rapports psychiatriques
+- Mode Consultation / Édition + Focus
+- Anonymisation par défaut
+- Export: Copier + PDF (print) + Export/Import JSON
+- Stockage localStorage uniquement (offline)
+- PWA: manifest + service worker (sw.js)
+
+IMPORTANT:
+- Mets index.html + sw.js + manifest.json dans le même dossier.
+- Le service worker (offline) nécessite un petit serveur local (pas "file://").
+  Ex: python -m http.server 8000  puis http://localhost:8000
+-->
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>PSY-WRITER</title>
+
+  <meta name="theme-color" content="#0f1115"/>
+  <link rel="manifest" href="manifest.json"/>
+
+  <style>
+    :root{
+      --bg:#0f1115; --fg:#e9edf5; --muted:#a8b0bd;
+      --panel: rgba(255,255,255,0.06);
+      --panel2: rgba(255,255,255,0.09);
+      --shadow: 0 18px 60px rgba(0,0,0,0.55);
+      --r: 18px;
+      --line: rgba(255,255,255,0.10);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f7f8fb; --fg:#0d1321; --muted:#4b5563;
+        --panel: rgba(0,0,0,0.04); --panel2: rgba(0,0,0,0.06);
+        --line: rgba(0,0,0,0.10); --shadow: 0 18px 60px rgba(0,0,0,0.12);
+      }
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family:var(--sans);
+      background: radial-gradient(1200px 700px at 15% 0%, rgba(46,229,157,0.10), transparent 55%),
+                  radial-gradient(900px 600px at 95% 10%, rgba(255,207,90,0.10), transparent 55%),
+                  var(--bg);
+      color:var(--fg);
+    }
+    header{
+      position:sticky; top:0; z-index:5;
+      backdrop-filter: blur(10px);
+      background: rgba(0,0,0,0.18);
+      border-bottom:1px solid var(--line);
+    }
+    @media (prefers-color-scheme: light){
+      header{ background: rgba(255,255,255,0.70); }
+    }
+    .wrap{ max-width:1200px; margin:0 auto; padding:14px 14px 26px; }
+    .top{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    }
+    .brand{ display:flex; flex-direction:column; gap:2px; }
+    .brand b{ letter-spacing:0.4px; }
+    .brand small{ color:var(--muted); }
+    .pillbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .btn{
+      border:1px solid var(--line);
+      background: var(--panel);
+      color:var(--fg);
+      padding:9px 12px;
+      border-radius: 999px;
+      cursor:pointer;
+      transition: transform 0.05s ease, background 0.15s ease;
+      font-weight:600;
+    }
+    .btn:hover{ background: var(--panel2); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{ border-color: rgba(46,229,157,0.45); }
+    .btn.warn{ border-color: rgba(255,207,90,0.45); }
+    .btn.bad{ border-color: rgba(255,107,107,0.45); }
+    .grid{
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns:1fr; }
+    }
+    .card{
+      background: var(--panel);
+      border:1px solid var(--line);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card h3{
+      margin:0; padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      font-size:15px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .card h3 span{ color:var(--muted); font-weight:500; font-size:12px; }
+    .card .body{ padding:12px 14px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .col{ flex:1 1 220px; min-width:220px; }
+    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    input, select, textarea{
+      width:100%;
+      background: rgba(0,0,0,0.12);
+      border:1px solid var(--line);
+      color:var(--fg);
+      border-radius: 12px;
+      padding:10px 10px;
+      font: inherit;
+      outline:none;
+    }
+    @media (prefers-color-scheme: light){
+      input, select, textarea{ background: rgba(255,255,255,0.85); }
+    }
+    textarea{ min-height: 90px; resize: vertical; }
+    .list{ display:flex; flex-direction:column; gap:8px; }
+    .item{
+      padding:10px 12px;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.10);
+      cursor:pointer;
+      display:flex; flex-direction:column; gap:4px;
+    }
+    @media (prefers-color-scheme: light){
+      .item{ background: rgba(255,255,255,0.70); }
+    }
+    .item.active{ outline:2px solid rgba(46,229,157,0.35); }
+    .item b{ font-size:14px; }
+    .item small{ color:var(--muted); }
+    .muted{ color:var(--muted); }
+    .mono{ font-family: var(--mono); }
+    .toolbar{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
+      padding:10px 14px; border-top:1px solid var(--line);
+      background: rgba(0,0,0,0.08);
+    }
+    @media (prefers-color-scheme: light){
+      .toolbar{ background: rgba(255,255,255,0.55); }
+    }
+    .split{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width:980px){ .split{ grid-template-columns:1fr; } }
+    .kpi{
+      display:flex; gap:10px; flex-wrap:wrap;
+      padding:10px 14px; border-bottom:1px solid var(--line);
+      background: rgba(0,0,0,0.06);
+    }
+    .kpi .chip{
+      padding:6px 10px; border:1px solid var(--line); border-radius:999px;
+      background: rgba(0,0,0,0.10);
+      font-size:12px; color:var(--muted);
+    }
+    .hidden{ display:none !important; }
+
+    /* Focus mode */
+    body.focus header .pillbar .btn:not(.focusKeep){ display:none; }
+    body.focus .grid{ grid-template-columns: 1fr; }
+    body.focus #leftPane{ display:none; }
+    body.focus .split{ grid-template-columns: 1fr; }
+
+    /* Print (PDF) */
+    @media print{
+      header, #leftPane, #editArea, .toolbar, .kpi{ display:none !important; }
+      .grid{ grid-template-columns: 1fr !important; }
+      body{ background:white !important; color:black !important; }
+      textarea{ border:none !important; min-height:auto !important; }
+      .card{ box-shadow:none !important; border:none !important; }
+      .wrap{ max-width:900px; }
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="wrap top">
+    <div class="brand">
+      <b>PSY-WRITER</b>
+      <small>Templates • Saisie rapide • Anonymisé par défaut • Offline (PWA)</small>
+    </div>
+    <div class="pillbar">
+      <button class="btn focusKeep" id="btnFocus">Focus</button>
+      <button class="btn" id="btnModeRun">Consultation</button>
+      <button class="btn" id="btnModeEdit">Édition</button>
+      <button class="btn warn" id="btnExport">Exporter</button>
+      <button class="btn" id="btnImport">Importer</button>
+      <button class="btn bad" id="btnReset">Reset</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <div class="card" id="leftPane">
+      <h3>Types de documents <span id="tplCount"></span></h3>
+      <div class="body">
+        <div class="row">
+          <div class="col">
+            <input id="searchTpl" placeholder="Rechercher (attestation, sevrage, liaison…)"/>
+          </div>
+          <div class="col" style="min-width:140px; flex:0 0 140px;">
+            <button class="btn primary" id="btnNewTpl" style="width:100%;">+ Nouveau</button>
+          </div>
+        </div>
+        <div style="height:10px;"></div>
+        <div class="list" id="tplList"></div>
+      </div>
+      <div class="toolbar">
+        <span class="muted" style="margin-right:auto; font-size:12px;">Stockage : localStorage</span>
+        <button class="btn" id="btnDuplicate">Dupliquer</button>
+        <button class="btn bad" id="btnDelete">Supprimer</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="kpi">
+        <span class="chip" id="modeChip">Mode : Consultation</span>
+        <span class="chip" id="activeChip">Document : —</span>
+        <span class="chip" id="autosaveChip">Auto-save : ON</span>
+        <span class="chip" id="pwaChip">PWA : —</span>
+      </div>
+
+      <div class="body">
+        <div class="split">
+          <div class="card" style="box-shadow:none;">
+            <h3 id="paneTitle">Saisie</h3>
+            <div class="body" id="formArea"></div>
+          </div>
+
+          <div class="card" style="box-shadow:none;">
+            <h3>Résultat final <span class="muted">copier / PDF</span></h3>
+            <div class="body">
+              <textarea id="output" class="mono" style="min-height:340px;"></textarea>
+            </div>
+            <div class="toolbar">
+              <button class="btn primary" id="btnGenerate">Générer</button>
+              <button class="btn" id="btnCopy">Copier</button>
+              <button class="btn" id="btnPDF">PDF</button>
+              <button class="btn" id="btnClearForm">Effacer saisie</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="editArea" class="hidden" style="margin-top:12px;">
+          <div class="card" style="box-shadow:none;">
+            <h3>Édition du template <span class="muted">questions + texte modèle</span></h3>
+            <div class="body">
+              <div class="row">
+                <div class="col">
+                  <label>Nom du template</label>
+                  <input id="editName" placeholder="Ex. Attestation suivi anxiodépressif"/>
+                </div>
+                <div class="col">
+                  <label>Catégorie</label>
+                  <input id="editCategory" placeholder="Ex. Travail / Mutuelle / Sevrage / Liaison"/>
+                </div>
+              </div>
+
+              <label>Description courte</label>
+              <input id="editDesc" placeholder="Ce qui s’affiche dans la liste"/>
+
+              <label>Champs (JSON simplifié)</label>
+              <textarea id="editFields" class="mono" spellcheck="false"></textarea>
+              <small class="muted">
+                Types : text, textarea, select, date, checkbox, number.  
+                Exemple : {"id":"motif","label":"Motif","type":"textarea"}  
+              </small>
+
+              <label>Texte modèle (placeholders)</label>
+              <textarea id="editTemplate" class="mono" spellcheck="false" style="min-height:220px;"></textarea>
+              <small class="muted">
+                Placeholders : {{fieldId}} • Pronoms : {{p.patient}} {{p.sujet}} {{p.objet}} {{p.poss}} • Date : {{today}}
+              </small>
+            </div>
+            <div class="toolbar">
+              <button class="btn primary" id="btnSaveTpl">Enregistrer template</button>
+              <button class="btn" id="btnValidateTpl">Valider</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================
+   PSY-WRITER v0.2 (offline/PWA)
+   - Templates + édition
+   - Mode anonymisé par défaut
+   - Export PDF via print
+   =========================== */
+
+const LS_KEY = "psy_writer_templates_v02";
+const LS_STATE = "psy_writer_state_v02";
+
+function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
+function todayFR(){
+  const d = new Date();
+  const pad = (n)=> String(n).padStart(2,"0");
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+}
+
+function pronouns(set){
+  // set: "F" | "M" | "N"
+  if(set==="F") return {patient:"la patiente", sujet:"elle", objet:"la", poss:"sa", accord:"e"};
+  if(set==="M") return {patient:"le patient", sujet:"il", objet:"le", poss:"son", accord:""};
+  return {patient:"la personne", sujet:"la personne", objet:"la personne", poss:"son", accord:"e"};
+}
+
+const DEFAULT_TEMPLATES = [
+  {
+    id: uid(),
+    name: "Attestation suivi anxiodépressif (anxiété à l’avant-plan)",
+    category: "Travail / Médecin-conseil",
+    desc: "Arrêt maintenu + hôpital de jour + suivi régulier",
+    fields: [
+      {id:"civilite", label:"Genre (pronoms)", type:"select", options:["F","M","N"], hint:"F=elle • M=il • N=neutre"},
+      {id:"anonyme", label:"Anonymiser (par défaut)", type:"checkbox", hint:"ON = pas d’identité nominative dans le texte"},
+      {id:"identite", label:"Identité (optionnel)", type:"text", hint:"Ex. Mme X / M. Y / Initiales"},
+      {id:"evo", label:"Évolution", type:"select", options:["lentement stable","stable","instable"], hint:""},
+      {id:"aptitude", label:"Compatibilité reprise travail", type:"select", options:["non compatible","partiellement compatible","compatible"], hint:""},
+      {id:"sympt", label:"Symptomatologie (facts)", type:"textarea", hint:"anxiété sociale, isolement, ruminations, sommeil…"},
+      {id:"demarches", label:"Démarches/ressources entreprises", type:"textarea", hint:"hôpital de jour, hygiène de vie, thérapeutique…"},
+      {id:"hdj_date", label:"Début hôpital de jour", type:"date", hint:""},
+      {id:"meds", label:"Médication en place (formulation prudente)", type:"textarea", hint:"Ex. médication psychotrope en place, réévaluée régulièrement"},
+      {id:"suivi", label:"Fréquence de suivi", type:"select", options:["régulier","rapproché","ponctuel"], hint:""},
+      {id:"notes", label:"Notes additionnelles (optionnel)", type:"textarea", hint:"réévaluation, sécurité…"}
+    ],
+    template:
+`Attestation médicale
+
+Je soussigné·e certifie que {{identite}} est suivi{{p.accord}} régulièrement en consultation de psychiatrie pour un trouble anxiodépressif.
+
+L’évolution clinique est {{evo}}. À ce stade, l’état clinique actuel reste {{aptitude}} avec une reprise d’activité professionnelle.
+
+Sur le plan symptomatique, l’anxiété est à l’avant-plan : {{sympt}}.
+
+{{p.patient}} a entrepris plusieurs démarches visant à stabiliser son état : {{demarches}}. Une prise en charge en hôpital de jour débutera le {{hdj_date}}, démarche travaillée en consultation et porteuse d’un soutien thérapeutique structurant.
+
+Une médication est actuellement en place : {{meds}}. Le suivi psychiatrique se poursuit de façon {{suivi}}, avec réévaluation clinique régulière.
+
+{{notes}}
+
+Fait pour servir et valoir ce que de droit.
+— {{today}}`
+  },
+  {
+    id: uid(),
+    name: "Note de consultation — nouveau suivi (générique)",
+    category: "Consultation",
+    desc: "Contexte • clinique • sécurité • plan",
+    fields: [
+      {id:"civilite", label:"Genre (pronoms)", type:"select", options:["F","M","N"]},
+      {id:"anonyme", label:"Anonymiser (par défaut)", type:"checkbox"},
+      {id:"identite", label:"Identité (optionnel)", type:"text"},
+      {id:"contexte", label:"Contexte / motif", type:"textarea"},
+      {id:"bio", label:"Éléments biographiques pertinents", type:"textarea"},
+      {id:"sympt", label:"Symptômes à l’avant-plan", type:"textarea"},
+      {id:"secu", label:"Sécurité (idées noires etc.)", type:"textarea"},
+      {id:"ttt", label:"Traitement / mesures", type:"textarea"},
+      {id:"plan", label:"Plan / suivi", type:"textarea"}
+    ],
+    template:
+`Consultation psychiatrique — {{today}}
+
+{{identite}}. Consultation réalisée dans le cadre d’un nouveau suivi.
+
+Contexte : {{contexte}}.
+
+Éléments de parcours : {{bio}}.
+
+Clinique : {{sympt}}.
+
+Sécurité : {{secu}}.
+
+Traitement / mesures : {{ttt}}.
+
+Plan : {{plan}}.`
+  },
+  {
+    id: uid(),
+    name: "Note — projet psychoéducation BPD (évaluation)",
+    category: "Consultation",
+    desc: "Évaluation conjointe + hypothèse BPD + plan",
+    fields: [
+      {id:"civilite", label:"Genre (pronoms)", type:"select", options:["F","M","N"]},
+      {id:"anonyme", label:"Anonymiser (par défaut)", type:"checkbox"},
+      {id:"identite", label:"Identité (optionnel)", type:"text"},
+      {id:"contexte", label:"Contexte", type:"textarea"},
+      {id:"elements", label:"Éléments à l’avant-plan", type:"textarea"},
+      {id:"histoire", label:"Parcours / antécédents thérapeutiques", type:"textarea"},
+      {id:"clinique", label:"Clinique actuelle", type:"textarea"},
+      {id:"substances", label:"Consommations / impulsivité", type:"textarea"},
+      {id:"ressources", label:"Ressources / changements récents", type:"textarea"},
+      {id:"plan", label:"Plan", type:"textarea"}
+    ],
+    template:
+`Consultation psychiatrique — {{today}}
+
+{{identite}}. Évaluation réalisée dans le cadre d’un projet de groupe de psychoéducation pour les personnes présentant un trouble de la personnalité borderline, en évaluation conjointe.
+
+Contexte : {{contexte}}.
+
+Éléments à l’avant-plan : {{elements}}.
+
+Parcours / suivi : {{histoire}}.
+
+Clinique : {{clinique}}.
+
+Impulsivité / consommations : {{substances}}.
+
+Ressources : {{ressources}}.
+
+Plan : {{plan}}.`
+  }
+];
+
+let templates = [];
+let state = {
+  mode: "run",        // run | edit
+  activeId: null,
+  focus: false,
+  lastFormValues: {}
+};
+
+const $ = (id)=> document.getElementById(id);
+
+function load(){
+  const raw = localStorage.getItem(LS_KEY);
+  templates = raw ? JSON.parse(raw) : DEFAULT_TEMPLATES;
+
+  const st = localStorage.getItem(LS_STATE);
+  if(st){
+    try{ state = {...state, ...JSON.parse(st)}; }catch(e){}
+  }
+  if(!state.activeId || !templates.some(t=>t.id===state.activeId)){
+    state.activeId = templates[0]?.id ?? null;
+  }
+  save(); // normalize
+}
+
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(templates));
+  localStorage.setItem(LS_STATE, JSON.stringify(state));
+}
+
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
+}
+
+function renderTplList(){
+  const q = ($("searchTpl").value || "").toLowerCase().trim();
+  const list = $("tplList");
+  list.innerHTML = "";
+
+  const filtered = templates.filter(t=>{
+    const hay = (t.name+" "+t.category+" "+t.desc).toLowerCase();
+    return !q || hay.includes(q);
+  });
+
+  $("tplCount").textContent = `${filtered.length}/${templates.length}`;
+
+  filtered.forEach(t=>{
+    const div = document.createElement("div");
+    div.className = "item"+(t.id===state.activeId ? " active":"");
+    div.innerHTML = `<b>${escapeHtml(t.name)}</b>
+                     <small>${escapeHtml(t.category || "—")} • ${escapeHtml(t.desc || "")}</small>`;
+    div.onclick = ()=>{ state.activeId = t.id; save(); renderAll(); };
+    list.appendChild(div);
+  });
+}
+
+function getActive(){
+  return templates.find(t=>t.id===state.activeId) || null;
+}
+
+function setMode(mode){
+  state.mode = mode;
+  save();
+  renderAll();
+}
+
+function setFocus(on){
+  state.focus = on;
+  document.body.classList.toggle("focus", !!on);
+  save();
+}
+
+function renderAll(){
+  const t = getActive();
+  $("activeChip").textContent = `Document : ${t ? t.name : "—"}`;
+  $("modeChip").textContent = `Mode : ${state.mode==="run" ? "Consultation" : "Édition"}`;
+  $("editArea").classList.toggle("hidden", state.mode!=="edit");
+  $("paneTitle").textContent = state.mode==="run" ? "Saisie" : "Saisie (aperçu)";
+
+  renderTplList();
+  renderForm();
+  renderEditPane();
+}
+
+function renderForm(){
+  const t = getActive();
+  const area = $("formArea");
+  area.innerHTML = "";
+  if(!t){ area.innerHTML = `<p class="muted">Aucun template.</p>`; return; }
+
+  const key = t.id;
+  const values = state.lastFormValues[key] || {};
+
+  (t.fields || []).forEach(f=>{
+    const wrap = document.createElement("div");
+    const lab = document.createElement("label");
+    lab.textContent = f.label || f.id;
+    wrap.appendChild(lab);
+
+    let el;
+    if(f.type==="textarea"){
+      el = document.createElement("textarea");
+    } else if(f.type==="select"){
+      el = document.createElement("select");
+      (f.options || []).forEach(opt=>{
+        const o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt;
+        el.appendChild(o);
+      });
+    } else if(f.type==="checkbox"){
+      el = document.createElement("input");
+      el.type = "checkbox";
+    } else if(f.type==="date"){
+      el = document.createElement("input");
+      el.type = "date";
+    } else if(f.type==="number"){
+      el = document.createElement("input");
+      el.type = "number";
+    } else {
+      el = document.createElement("input");
+      el.type = "text";
+    }
+    el.id = "f_"+f.id;
+
+    // Defaults intelligents
+    if(f.type==="checkbox"){
+      // anonymisation ON par défaut si champ id=anonyme
+      if(values[f.id] === undefined && f.id === "anonyme") el.checked = true;
+      else el.checked = !!values[f.id];
+    } else {
+      el.value = values[f.id] ?? "";
+    }
+
+    el.oninput = ()=> {
+      const v = readFormValues();
+      state.lastFormValues[key] = v;
+      save();
+      if(state.mode==="run") $("output").value = generateText();
+    };
+    el.onchange = el.oninput;
+
+    wrap.appendChild(el);
+
+    if(f.hint){
+      const hint = document.createElement("div");
+      hint.className="muted";
+      hint.style.fontSize="12px";
+      hint.style.marginTop="6px";
+      hint.textContent = f.hint;
+      wrap.appendChild(hint);
+    }
+
+    area.appendChild(wrap);
+  });
+
+  if(state.mode==="run"){
+    $("output").value = generateText();
+  }
+}
+
+function readFormValues(){
+  const t = getActive();
+  if(!t) return {};
+  const values = {};
+  (t.fields||[]).forEach(f=>{
+    const el = $("f_"+f.id);
+    if(!el) return;
+    if(f.type==="checkbox") values[f.id] = el.checked;
+    else values[f.id] = el.value;
+  });
+  return values;
+}
+
+function formatDateFR(iso){
+  if(!iso) return "";
+  const d = new Date(iso+"T00:00:00");
+  if(isNaN(d)) return iso;
+  const pad = (n)=> String(n).padStart(2,"0");
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+}
+
+function cleanText(out){
+  out = out.replace(/\n[ \t]*\n[ \t]*\n+/g, "\n\n");
+  out = out.replace(/\n\n\s*\n/g, "\n\n");
+  out = out.replace(/[ \t]+\n/g, "\n");
+  return out.trim();
+}
+
+function generateText(){
+  const t = getActive();
+  if(!t) return "";
+  const vals = readFormValues();
+  const p = pronouns(vals.civilite || "N");
+  const ctx = { ...vals, p, today: todayFR() };
+
+  // Anonymisation par défaut
+  if(ctx.anonyme){
+    ctx.identite = p.patient; // "la patiente / le patient / la personne"
+  }else{
+    if(!ctx.identite) ctx.identite = p.patient;
+  }
+
+  // Dates
+  (t.fields||[]).forEach(f=>{
+    if(f.type==="date" && ctx[f.id]){
+      ctx[f.id] = formatDateFR(ctx[f.id]);
+    }
+  });
+
+  // moteur de placeholders
+  let out = String(t.template || "");
+  out = out.replace(/\{\{today\}\}/g, ctx.today)
+           .replace(/\{\{p\.patient\}\}/g, p.patient)
+           .replace(/\{\{p\.sujet\}\}/g, p.sujet)
+           .replace(/\{\{p\.objet\}\}/g, p.objet)
+           .replace(/\{\{p\.poss\}\}/g, p.poss)
+           .replace(/\{\{p\.accord\}\}/g, p.accord);
+
+  out = out.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key)=>{
+    const v = ctx[key];
+    if(v===undefined || v===null) return "";
+    if(typeof v === "boolean") return v ? "oui" : "non";
+    return String(v).trim();
+  });
+
+  // si notes vide → supprime la ligne
+  out = out.replace(/\n\{\{notes\}\}\n/g, "\n");
+  out = cleanText(out);
+  return out;
+}
+
+function renderEditPane(){
+  const t = getActive();
+  if(!t) return;
+
+  $("editName").value = t.name || "";
+  $("editCategory").value = t.category || "";
+  $("editDesc").value = t.desc || "";
+  $("editTemplate").value = t.template || "";
+  $("editFields").value = JSON.stringify(t.fields || [], null, 2);
+}
+
+function updateActiveFromEditor(){
+  const t = getActive();
+  if(!t) return;
+
+  t.name = $("editName").value.trim() || t.name;
+  t.category = $("editCategory").value.trim();
+  t.desc = $("editDesc").value.trim();
+  t.template = $("editTemplate").value;
+
+  const raw = $("editFields").value;
+  const parsed = JSON.parse(raw);
+  if(!Array.isArray(parsed)) throw new Error("fields must be an array");
+  parsed.forEach(f=>{
+    if(!f.id) throw new Error("field missing id");
+    if(!f.type) f.type = "text";
+  });
+  t.fields = parsed;
+
+  save();
+}
+
+function newTemplate(){
+  const t = {
+    id: uid(),
+    name: "Nouveau template",
+    category: "—",
+    desc: "à compléter",
+    fields: [
+      {id:"civilite", label:"Genre (pronoms)", type:"select", options:["F","M","N"]},
+      {id:"anonyme", label:"Anonymiser (par défaut)", type:"checkbox"},
+      {id:"identite", label:"Identité (optionnel)", type:"text"},
+      {id:"contenu", label:"Contenu", type:"textarea"}
+    ],
+    template: `{{today}}\n\n{{identite}}.\n\n{{contenu}}`
+  };
+  templates.unshift(t);
+  state.activeId = t.id;
+  save();
+  renderAll();
+  setMode("edit");
+}
+
+function duplicateTemplate(){
+  const t = getActive();
+  if(!t) return;
+  const copy = JSON.parse(JSON.stringify(t));
+  copy.id = uid();
+  copy.name = t.name + " (copie)";
+  templates.unshift(copy);
+  state.activeId = copy.id;
+  save();
+  renderAll();
+}
+
+function deleteTemplate(){
+  const t = getActive();
+  if(!t) return;
+  if(!confirm("Supprimer ce template ?")) return;
+  templates = templates.filter(x=>x.id!==t.id);
+  if(state.lastFormValues[t.id]) delete state.lastFormValues[t.id];
+  state.activeId = templates[0]?.id ?? null;
+  save();
+  renderAll();
+}
+
+function exportAll(){
+  const blob = new Blob([JSON.stringify({templates, state}, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `psy-writer-export-${Date.now()}.json`;
+  a.click();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 2500);
+}
+
+function importAll(){
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = "application/json";
+  inp.onchange = async ()=>{
+    const f = inp.files[0];
+    if(!f) return;
+    const txt = await f.text();
+    try{
+      const data = JSON.parse(txt);
+      if(Array.isArray(data.templates)) templates = data.templates;
+      if(data.state) state = {...state, ...data.state};
+      if(!templates.length) templates = DEFAULT_TEMPLATES;
+      if(!state.activeId || !templates.some(t=>t.id===state.activeId)){
+        state.activeId = templates[0]?.id ?? null;
+      }
+      save();
+      renderAll();
+    }catch(e){
+      alert("Import invalide : " + e.message);
+    }
+  };
+  inp.click();
+}
+
+function resetAll(){
+  if(!confirm("Reset complet ? (templates + saisies)")) return;
+  templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+  state = { mode:"run", activeId: templates[0]?.id ?? null, focus:false, lastFormValues:{} };
+  save();
+  renderAll();
+  setFocus(false);
+}
+
+function copyOutput(){
+  const ta = $("output");
+  ta.select();
+  document.execCommand("copy");
+}
+
+function clearForm(){
+  const t = getActive();
+  if(!t) return;
+  state.lastFormValues[t.id] = {};
+  save();
+  renderForm();
+  $("output").value = generateText();
+}
+
+function validateTpl(){
+  try{
+    updateActiveFromEditor();
+    alert("OK — template valide.");
+  }catch(e){
+    alert("Template invalide : " + e.message);
+  }
+}
+
+// UI events
+$("btnModeRun").onclick = ()=> setMode("run");
+$("btnModeEdit").onclick = ()=> setMode("edit");
+$("btnFocus").onclick = ()=> setFocus(!state.focus);
+$("searchTpl").oninput = renderTplList;
+
+$("btnNewTpl").onclick = newTemplate;
+$("btnDuplicate").onclick = duplicateTemplate;
+$("btnDelete").onclick = deleteTemplate;
+
+$("btnGenerate").onclick = ()=> $("output").value = generateText();
+$("btnCopy").onclick = copyOutput;
+$("btnPDF").onclick = ()=> window.print();
+$("btnClearForm").onclick = clearForm;
+
+$("btnSaveTpl").onclick = ()=>{
+  try{
+    updateActiveFromEditor();
+    renderAll();
+    alert("Enregistré.");
+  }catch(e){
+    alert("Erreur : " + e.message);
+  }
+};
+$("btnValidateTpl").onclick = validateTpl;
+
+$("btnExport").onclick = exportAll;
+$("btnImport").onclick = importAll;
+$("btnReset").onclick = resetAll;
+
+// PWA: service worker
+(async function initPWA(){
+  const chip = $("pwaChip");
+  if(!("serviceWorker" in navigator)){
+    chip.textContent = "PWA : non supporté";
+    return;
+  }
+  try{
+    const reg = await navigator.serviceWorker.register("./sw.js");
+    chip.textContent = "PWA : offline prêt";
+    reg.update?.();
+  }catch(e){
+    chip.textContent = "PWA : SW non enregistré";
+  }
+})();
+
+// init
+load();
+setFocus(!!state.focus);
+renderAll();
+</script>
+</body>
+</html>
