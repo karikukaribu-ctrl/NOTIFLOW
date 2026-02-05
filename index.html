@@ -1315,15 +1315,95 @@ function buildAddictoSentence(v){
 
 function buildMSESentence(v){
   const mse = v.mse || {};
-  const lines = [];
-  MSE_DOMAINS.forEach(dom=>{
-    const sel = mse[dom.id] || [];
-    if(sel.length){
-      lines.push(`${dom.label} : ${sel.join(", ")}`);
-    }
+  const parts = [];
+
+  // Apparence / contact
+  if (mse.mse_app?.length || mse.mse_contact?.length) {
+    parts.push(
+      "Lors de l’entretien, la personne se présente " +
+      [...(mse.mse_app||[]), ...(mse.mse_contact||[])].join(", ")
+    );
+  }
+
+  // Discours
+  if (mse.mse_speech?.length) {
+    parts.push(
+      "Le discours est " + mse.mse_speech.join(", ")
+    );
+  }
+
+  // Humeur / affects
+  if (mse.mse_mood?.length) {
+    parts.push(
+      "L’humeur apparaît " + mse.mse_mood.join(", ")
+    );
+  }
+
+  // Pensée
+  if (mse.mse_thought?.length) {
+    parts.push(
+      "Sur le plan de la pensée, on note " + mse.mse_thought.join(", ")
+    );
+  }
+
+  // Perceptions
+  if (mse.mse_percep?.length) {
+    const hasHall = mse.mse_percep.some(p => p.includes("hallucination"));
+    parts.push(
+      hasHall
+        ? "Des troubles perceptifs sont rapportés (" + mse.mse_percep.join(", ") + ")"
+        : "Aucun trouble perceptif n’est rapporté"
+    );
+  }
+
+  // Cognition
+  if (mse.mse_cogn?.length) {
+    parts.push(
+      "Sur le plan cognitif, " + mse.mse_cogn.join(", ")
+    );
+  }
+
+  // Insight / jugement
+  if (mse.mse_insight?.length) {
+    parts.push(
+      "L’insight est " + mse.mse_insight.join(", ")
+    );
+  }
+
+  // Sécurité
+  if (mse.mse_risk?.length) {
+    parts.push(
+      "Concernant la sécurité, " + mse.mse_risk.join(", ")
+    );
+  }
+
+  // 🔥 INTÉGRATION DES CONSOMMATIONS DANS L’EXAMEN MENTAL
+  const addParts = [];
+  const addMap = {
+    sub_alc: "un usage d’alcool à visée anxiolytique",
+    sub_can: "un usage de cannabis",
+    sub_coc: "un usage de stimulants",
+    sub_bzd: "un usage de benzodiazépines",
+    sub_red: "une diminution récente des consommations",
+    sub_risk: "un risque de rechute à surveiller"
+  };
+  (v.addSel || []).forEach(id=>{
+    if(addMap[id]) addParts.push(addMap[id]);
   });
-  return lines.length ? lines.join(" ; ") : "Examen mental : non systématisé ce jour";
+  if (v.addFree) addParts.push(v.addFree);
+
+  if (addParts.length) {
+    parts.push(
+      "Sur le plan des consommations, la personne rapporte " +
+      addParts.join(", ")
+    );
+  }
+
+  return parts.length
+    ? parts.join(". ") + "."
+    : "L’examen mental n’a pas mis en évidence d’élément psychopathologique majeur ce jour.";
 }
+
 
 function buildCareSentence(v){
   const careLib = {
@@ -1469,25 +1549,99 @@ function generateText(){
 }
 
 /* ---------- Render tab body ---------- */
-function renderTabBody(){
-  const t=getActive();
-  const container = $("tabBody");
-  container.innerHTML = "";
-  if(!t){
-    container.innerHTML = `<div class="muted">Aucun template.</div>`;
-    return;
-  }
-  $("chipDoc").textContent = "Document : " + t.name;
+function buildMSESentence(v){
+  const mse = v.mse || {};
+  const parts = [];
 
-  // If focus, choose the “most checkbox-heavy” tabs automatically for the template
-  let tab = state.tab;
-  if(state.focus){
-    // heuristic: prefer syndromes/mse/prise/plan/schema
-    const allowed = currentTabs();
-    const pref = ["syndromes","mse","prise","addicto","plan","schema","capacite","evolution","diag","contexte","identite"];
-    tab = pref.find(x=>allowed.includes(x)) || allowed[0] || "identite";
-    $("chipTab").textContent = "Onglet : Focus";
+  // Apparence / contact
+  if (mse.mse_app?.length || mse.mse_contact?.length) {
+    parts.push(
+      "Lors de l’entretien, la personne se présente " +
+      [...(mse.mse_app||[]), ...(mse.mse_contact||[])].join(", ")
+    );
   }
+
+  // Discours
+  if (mse.mse_speech?.length) {
+    parts.push(
+      "Le discours est " + mse.mse_speech.join(", ")
+    );
+  }
+
+  // Humeur / affects
+  if (mse.mse_mood?.length) {
+    parts.push(
+      "L’humeur apparaît " + mse.mse_mood.join(", ")
+    );
+  }
+
+  // Pensée
+  if (mse.mse_thought?.length) {
+    parts.push(
+      "Sur le plan de la pensée, on note " + mse.mse_thought.join(", ")
+    );
+  }
+
+  // Perceptions
+  if (mse.mse_percep?.length) {
+    const hasHall = mse.mse_percep.some(p => p.includes("hallucination"));
+    parts.push(
+      hasHall
+        ? "Des troubles perceptifs sont rapportés (" + mse.mse_percep.join(", ") + ")"
+        : "Aucun trouble perceptif n’est rapporté"
+    );
+  }
+
+  // Cognition
+  if (mse.mse_cogn?.length) {
+    parts.push(
+      "Sur le plan cognitif, " + mse.mse_cogn.join(", ")
+    );
+  }
+
+  // Insight / jugement
+  if (mse.mse_insight?.length) {
+    parts.push(
+      "L’insight est " + mse.mse_insight.join(", ")
+    );
+  }
+
+  // Sécurité
+  if (mse.mse_risk?.length) {
+    parts.push(
+      "Concernant la sécurité, " + mse.mse_risk.join(", ")
+    );
+  }
+
+  // 🔥 CONSOMMATIONS INTÉGRÉES À L’EXAMEN MENTAL
+  const addParts = [];
+  const addMap = {
+    sub_alc: "un usage d’alcool à visée anxiolytique",
+    sub_can: "un usage de cannabis",
+    sub_coc: "un usage de stimulants",
+    sub_bzd: "un usage de benzodiazépines",
+    sub_red: "une diminution récente des consommations",
+    sub_risk: "un risque de rechute à surveiller"
+  };
+
+  (v.addSel || []).forEach(id=>{
+    if(addMap[id]) addParts.push(addMap[id]);
+  });
+
+  if (v.addFree) addParts.push(v.addFree);
+
+  if (addParts.length) {
+    parts.push(
+      "Sur le plan des consommations, la personne rapporte " +
+      addParts.join(", ")
+    );
+  }
+
+  return parts.length
+    ? parts.join(". ") + "."
+    : "L’examen mental n’a pas mis en évidence d’élément psychopathologique majeur ce jour.";
+}
+
 
   switch(tab){
     case "identite": return renderIdentite(container);
